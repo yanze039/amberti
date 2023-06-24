@@ -4,13 +4,13 @@ import sys
 
 
 logging.basicConfig(
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    format=">> | %(asctime)s | %(levelname)s | %(name)s | %(message)s |",
     datefmt="%Y-%m-%d %H:%M:%S",
     level=os.environ.get("LOGLEVEL", "INFO").upper(),
     stream=sys.stdout,
 )
 
-def get_logger():
+def getLogger():
     # Setting logging configurations
     # logging.root.setLevel(0)
     logger = logging.getLogger(__name__)

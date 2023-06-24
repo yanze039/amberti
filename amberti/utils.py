@@ -32,11 +32,16 @@ def set_directory(path: Path):
 def run_command(
         cmd: List, 
         stdin: Optional[str] = None,
-        shell: Optional[bool] = None
+        shell: Optional[bool] = None,
+        print_to_terminal: bool = True
     ):
-
-    stdout = subprocess.PIPE
-    stderr = subprocess.PIPE
+    
+    if print_to_terminal:
+        stdout = None
+    else:
+        stdout = subprocess.PIPE
+    
+    stderr = subprocess.STDOUT
     
     with subprocess.Popen(
         args=cmd,

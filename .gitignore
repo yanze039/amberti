@@ -1,1 +1,11 @@
 test*
+__pycache__
+*.pyc
+.nfs*
+amberti.egg-info
+*.egg
+dist
+build
+tmp*
+_version.py
+.coverage
