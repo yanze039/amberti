@@ -35,27 +35,65 @@ def parmchk2(mol, output, forcefield="gaff", mol_type="mol2"):
     run_command(command)
 
 
-def build_lib(forcefield, frcmod, mol2, name=None):
-    if name is None:
-        mol_name = ".".join(mol2.split(".")[:-1])
-        name = mol_name[:3]
-    tleap_in = [
-        f"source leaprc.{forcefield}",
-        f"loadamberparams {frcmod}",
-        f"{name} = loadmol2 {mol2} ",
-        f"saveoff {name} {name}.lib",
-        f"savepdb {name} {name}.pdb",
-        "quit"
-    ]
-    tleap_in_file = f"tleap.{name}.in"
-    with open(tleap_in_file, "w") as fp:
-        fp.write("\n".join(tleap_in))
-    command = ["tleap", "-f", tleap_in_file]
+def tleap(script, fname="tleap.in"):
+    with open(fname, "w") as fp:
+        fp.write(script)
+    command = ["tleap", "-f", fname]
     logger.info(f'Running "{" ".join(command)}"')
     run_command(command)
 
 
-def maketop(
+def cpptraj(script, prmtop, fname="cpptraj.in"):
+    with open(fname, "w") as fp:
+        fp.write(script)
+    command = ["cpptraj", "-p", prmtop, fname]
+    logger.info(f'Running "{" ".join(command)}"')
+    run_command(command)
+    return
+
+
+def pmemd(defname, md_in, prmtop, conf, outtraj=True, ref=None, cuda=True, mpi=False, run=True):
+
+    if cuda:
+        pmemd_binary = "pmemd.cuda"
+    elif mpi:
+        pmemd_binary = "pmemd.mpi"
+    else:
+        pmemd_binary = "pmemd"
+
+    command = [
+        pmemd_binary,
+        "-i", md_in, 
+        "-p", prmtop,
+        "-c", conf,
+    ]
+
+    if ref is not None:
+        command += ["-ref", ref]
+    
+    command += [ "-O", 
+        "-o", f"{defname}.out",
+        "-e", f"{defname}.en",
+        "-inf", f"{defname}.info",
+        "-r", f"{defname}.rst7",
+        "-l", f"{defname}.log"
+    ]
+
+    if outtraj:
+        command += [
+            "-x", f"{defname}.nc"
+        ]
+    
+    if run:
+        logger.info(f'Running "{" ".join(command)}"')
+        return_code, _, _ = run_command(command)
+        return return_code
+    else:
+        return " ".join(command)
+    
+
+
+def make_ligand_topology(
           mol, 
           ncharge, 
           name=None, 
@@ -78,7 +116,17 @@ def maketop(
         forcefield=forcefield, mol_type=mol_type, fo=fo
     )
     parmchk2(mol2, frcmod, mol_type=fo, forcefield=forcefield)
-    build_lib(forcefield, frcmod, mol2, name=name)
+
+    tleap_in = [
+        f"source leaprc.{forcefield}",
+        f"loadamberparams {frcmod}",
+        f"{name} = loadmol2 {mol2} ",
+        f"saveoff {name} {name}.lib",
+        f"savepdb {name} {name}.pdb",
+        "quit"
+    ]
+    tleap_in_file = f"tleap.{name}.in"
+    tleap("\n".join(tleap_in), fname=tleap_in_file)
 
     # check validity
     assert os.path.exists(mol2)
@@ -87,4 +135,5 @@ def maketop(
     assert os.path.exists(pdb)
 
     logger.info(f'{mol2}, {frcmod} are created successfully.')
-    
+
+
