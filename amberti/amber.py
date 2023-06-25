@@ -40,7 +40,8 @@ def tleap(script, fname="tleap.in"):
         fp.write(script)
     command = ["tleap", "-f", fname]
     logger.info(f'Running "{" ".join(command)}"')
-    run_command(command)
+    return_code, _, _ = run_command(command)
+    assert return_code == 0
 
 
 def cpptraj(script, prmtop, fname="cpptraj.in"):
@@ -63,13 +64,13 @@ def pmemd(defname, md_in, prmtop, conf, outtraj=True, ref=None, cuda=True, mpi=F
 
     command = [
         pmemd_binary,
-        "-i", md_in, 
-        "-p", prmtop,
-        "-c", conf,
+        "-i", str(md_in), 
+        "-p", str(prmtop),
+        "-c", str(conf),
     ]
 
     if ref is not None:
-        command += ["-ref", ref]
+        command += ["-ref", str(ref)]
     
     command += [ "-O", 
         "-o", f"{defname}.out",
@@ -87,6 +88,7 @@ def pmemd(defname, md_in, prmtop, conf, outtraj=True, ref=None, cuda=True, mpi=F
     if run:
         logger.info(f'Running "{" ".join(command)}"')
         return_code, _, _ = run_command(command)
+        assert return_code == 0
         return return_code
     else:
         return " ".join(command)

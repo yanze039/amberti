@@ -12,7 +12,6 @@ def em(
         ref,
         maxcyc=10000,
         resstraint_wt=5.00,
-        
         fep=True,
         clambda=None,
         scalpha=None,
@@ -56,13 +55,14 @@ def em(
     script += [
         "/",
         "&ewald",
-        "/" 
+        "/"
     ]
 
     with open(fname, "w") as fp:
         fp.write("\n".join(script))
+        fp.write("\n")
     
-    return_code = pmemd(defname, fname, prmtop, conf, outtraj=True, ref=ref, cuda=True, mpi=False, run=run)
+    return_code = pmemd(defname, fname, prmtop, conf, outtraj=False, ref=ref, cuda=True, mpi=False, run=run)
     return return_code
 
 
@@ -137,6 +137,7 @@ def heat(
     
     with open(fname, "w") as fp:
         fp.write("\n".join(script))
+        fp.write("\n")
     
     return_code = pmemd(defname, fname, prmtop, conf, outtraj=True, ref=ref, cuda=True, mpi=False, run=run)
     return return_code
@@ -206,6 +207,7 @@ def pressurize(
 
     with open(fname, "w") as fp:
         fp.write("\n".join(script))
+        fp.write("\n")
     
     return_code = pmemd(defname, fname, prmtop, conf, outtraj=True, ref=ref, cuda=True, mpi=False, run=run)
     return return_code
@@ -448,6 +450,7 @@ def production(
     
     with open(fname, "w") as fp:
         fp.write("\n".join(script))
+        fp.write("\n")
 
     return_code = pmemd(defname, fname, prmtop, conf, outtraj=True, ref=ref, cuda=True, mpi=False, run=run)
     return return_code

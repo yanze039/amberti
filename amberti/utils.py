@@ -54,3 +54,15 @@ def run_command(
         out, err = subp.communicate(input=stdin)
         return_code = subp.poll()
     return return_code, out, err
+
+
+def set_tag(name):
+    with open(name, 'w') as _:
+        pass
+
+
+def print_list(alist, by=","):
+    string = []
+    for aa in alist:
+        string.append(str(aa))
+    return by.join(string)

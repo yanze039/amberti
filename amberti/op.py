@@ -1,6 +1,7 @@
 from amberti.logger import getLogger
 from amberti.amber import tleap
 import os
+import pytraj as pt
 
 logger = getLogger()
 
@@ -11,7 +12,8 @@ def create_simulation_box(
                           ligand_forcefield,
                           protein_forcefield,
                           water='tip3p',
-                          size=15.0, resize=0.75
+                          size_ligand=15.0, size_complex=12.0,
+                          resize=0.75
     ):
     if water == "tip3p":
         waterbox = "TIP3PBOX"
@@ -34,34 +36,34 @@ def create_simulation_box(
         f"mol1 = loadpdb {lpdb1}",
         f"mol2 = loadpdb {lpdb2}",
         f"protein = loadpdb {ppdb}",
-        f"ligands = loadpdb {llpdb}"
+        f"ligands = loadpdb {llpdb}",
         "complex1 = combine {mol1 protein}",
         "complex2 = combine {mol2 protein}",
-        "complex3 = combine {ligands protein}"
+        "complex3 = combine {ligands protein}",
 
         # create ligands in solution for vdw+bonded transformation
-        f"solvatebox complex1 {waterbox} {str(size)} {str(resize)}",
+        f"solvatebox complex1 {waterbox} {str(size_complex)} {str(resize)}",
         "addions complex1 Na+ 0",
         "savepdb complex1 complex_1.pdb",
         "saveamberparm complex1 complex_1.parm7 complex_1.rst7",
 
         # create ligands in solution for vdw+bonded transformation
-        f"solvatebox complex2 {waterbox} {str(size)} {str(resize)}",
+        f"solvatebox complex2 {waterbox} {str(size_complex)} {str(resize)}",
         "addions complex2 Na+ 0",
         "savepdb complex2 complex_2.pdb",
         "saveamberparm complex2 complex_2.parm7 complex_2.rst7",
         
         # create ligands in solution for vdw+bonded transformation
-        f"solvatebox ligands TIP3PBOX {size}",
+        f"solvatebox ligands TIP3PBOX {size_ligand}",
         "addions ligands Na+ 0",
         "savepdb ligands ligands_vdw_bonded.pdb",
         "saveamberparm ligands ligands_vdw_bonded.parm7 ligands_vdw_bonded.rst7",
 
         # create complex in solution for vdw+bonded transformation
-        f"solvatebox complex TIP3PBOX {size} ",
-        "addions complex Na+ 0",
-        "savepdb complex complex_vdw_bonded.pdb",
-        "saveamberparm complex complex_vdw_bonded.parm7 complex_vdw_bonded.rst7"
+        f"solvatebox complex3 TIP3PBOX {size_ligand} ",
+        "addions complex3 Na+ 0",
+        "savepdb complex3 complex_vdw_bonded.pdb",
+        "saveamberparm complex3 complex_vdw_bonded.parm7 complex_vdw_bonded.rst7",
 
         "quit"
         ]
@@ -134,5 +136,20 @@ def make_charge_transform(
     tleap("\n".join(scripts), fname=fname)
 
 
+def concatenate_pdb(pdb1, pdb2, out):
+    with open(pdb1, "r") as fp:
+        mol1 = fp.read().strip().split("\n")
+    with open(pdb2, "r") as fp:
+        mol2 = fp.read().strip().split("\n")
+    mol1 = mol1[:-1]  # remove the `END` section.
+    mol = mol1 + mol2
+    with open(out, "w") as fp:
+        fp.write("\n".join(mol))
+        fp.write("\n")
+
+
+def extract_conf(rst7, prmtop, out, select, overwrite=False):
+    traj = pt.iterload(rst7, prmtop)
+    pt.write_traj(out, traj[str(select)], overwrite=overwrite)
 
     
