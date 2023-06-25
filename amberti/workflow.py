@@ -331,7 +331,7 @@ def setTI(
 
                     logger.info(f"Heating from 5K to {config['TI']['temp']}K ...")
                     tasks[f"{system}_{step}_{lmb}"]["command"].append( heat(
-                        defname="heating",
+                        defname="heat",
                         prmtop=prmtop, 
                         conf="min2.rst7",
                         ref="min2.rst7",
@@ -479,12 +479,12 @@ def run(
     tag = "done.tag"
 
     prep_dir = cwd.joinpath("prepration")
-    # if not os.path.exists(prep_dir.joinpath(tag)):
-    #     with set_directory(prep_dir):
-    #         prep(ppdb, lpath1, lname1, lpath2, lname2, config)
-    #         set_tag(tag)
-    # else:
-    #     logger.info("preparation has already existed. skip through it.")
+    if not os.path.exists(prep_dir.joinpath(tag)):
+        with set_directory(prep_dir):
+            prep(ppdb, lpath1, lname1, lpath2, lname2, config)
+            set_tag(tag)
+    else:
+        logger.info("preparation has already existed. skip through it.")
 
     fep_run_dir = cwd.joinpath("fep")
     if not os.path.exists(fep_run_dir.joinpath(tag)):
