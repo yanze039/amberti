@@ -1,5 +1,7 @@
 import os
+import json
 import shutil
+import random
 from pathlib import Path
 from amberti.md import em, heat, pressurize, production
 from amberti.logger import getLogger
@@ -28,11 +30,36 @@ def equilibrate_systems(
             os.mkdir(system_dir)
         prmtop = top_dir.joinpath(f"{system}_vdw_bonded.parm7")
         with set_directory(system_dir):
-            em(
-                "min",
+            logger.info("Pre-heating ...")
+            heat(
+                defname="debug",
                 prmtop=prmtop, 
                 conf=top_dir.joinpath(f"{system}_vdw_bonded.rst7"),
                 ref=top_dir.joinpath(f"{system}_vdw_bonded.rst7"),
+                nsteps=5,
+                dt=0.00001,
+                temp=5.0,
+                resstraint_wt=config["prep"]["heat"]["resstraint_wt"],
+                fep=True,
+                clambda=0.5,
+                scalpha=0.5,
+                scbeta=12.0,
+                ifsc=1,
+                timask1=config["prep"]["timask1"],
+                timask2=config["prep"]["timask2"],
+                scmask1=config["prep"]["scmask1"],
+                scmask2=config["prep"]["scmask2"],
+                tempi=4.0,
+                ofreq=1,
+                fname="debug.in",
+                run=True
+            )
+
+            em(
+                "min",
+                prmtop=prmtop, 
+                conf="debug.rst7",
+                ref="debug.rst7",
                 maxcyc=config["prep"]["em"]["maxcyc"],
                 resstraint_wt=config["prep"]["em"]["resstraint_wt"],
                 fep=True,
@@ -181,10 +208,10 @@ def prep(ppdb, lpath1, lname1, lpath2, lname2, config):
     ligand_forcefield = config["ligand_forcefield"]
     protein_forcefield = config["protein_forcefield"]
 
-    lib1 = lpath1.joinpath(f"{lname1}.lib")
+    lib1 = lpath1.joinpath(f"{lname1}.{ligand_forcefield}.lib")
     frcmod1 = lpath1.joinpath(f"{lname1}.{ligand_forcefield}.frcmod")
     lpdb1 = lpath1.joinpath(f"{lname1}.pdb")
-    lib2 = lpath2.joinpath(f"{lname2}.lib")
+    lib2 = lpath2.joinpath(f"{lname2}.{ligand_forcefield}.lib")
     frcmod2 = lpath2.joinpath(f"{lname2}.{ligand_forcefield}.frcmod")
     lpdb2 = lpath2.joinpath(f"{lname2}.pdb")
     llpdb = cwd.joinpath(f"{lname1}_{lname2}.pdb")
@@ -263,11 +290,39 @@ def setTI(
                 tasks[f"{system}_{step}_{lmb}"]["command"] = []
 
                 with set_directory(lmb_dir):
-                    tasks[f"{system}_{step}_{lmb}"]["command"].append( em(
-                        "min",
+
+                    logger.info("Pre-heating ...")
+                    tasks[f"{system}_{step}_{lmb}"]["command"].append(heat(
+                        defname="debug",
                         prmtop=prmtop, 
                         conf=top_dir.joinpath(f"{system}_{step}.rst7"),
                         ref=top_dir.joinpath(f"{system}_{step}.rst7"),
+                        nsteps=5,
+                        dt=0.00005,
+                        temp=5.0,
+                        resstraint_wt=config["TI"]["heat"]["resstraint_wt"],
+                        fep=True,
+                        clambda=lmb,
+                        scalpha=config[step]["scalpha"],
+                        scbeta=config[step]["scbeta"],
+                        ifsc=config[step]["ifsc"],
+                        timask1=config[step]["timask1"],
+                        timask2=config[step]["timask2"],
+                        scmask1=config[step].get("scmask1", None),
+                        scmask2=config[step].get("scmask2", None),
+                        crgmask=config[step].get("crgmask", None),
+                        tempi=4.0,
+                        ofreq=1,
+                        fname="debug.in",
+                        run=False
+                    ))
+
+
+                    tasks[f"{system}_{step}_{lmb}"]["command"].append( em(
+                        "min",
+                        prmtop=prmtop, 
+                        conf="debug.rst7",
+                        ref="debug.rst7",
                         maxcyc=config["TI"]["em"]["maxcyc"],
                         resstraint_wt=config["TI"]["em"]["resstraint_wt"],
                         fep=True,
@@ -279,6 +334,7 @@ def setTI(
                         timask2=config[step]["timask2"],
                         scmask1=config[step].get("scmask1", None),
                         scmask2=config[step].get("scmask2", None),
+                        crgmask=config[step].get("crgmask", None),
                         fname="min.in",
                         run=False
                     ))
@@ -302,6 +358,7 @@ def setTI(
                         timask2=config[step]["timask2"],
                         scmask1=config[step].get("scmask1", None),
                         scmask2=config[step].get("scmask2", None),
+                        crgmask=config[step].get("crgmask", None),
                         tempi=4.0,
                         ofreq=1,
                         fname="pre_heat.in",
@@ -325,6 +382,7 @@ def setTI(
                         timask2=config[step]["timask2"],
                         scmask1=config[step].get("scmask1", None),
                         scmask2=config[step].get("scmask2", None),
+                        crgmask=config[step].get("crgmask", None),
                         fname="min2.in",
                         run=False
                     ))
@@ -347,6 +405,7 @@ def setTI(
                         timask2=config[step]["timask2"],
                         scmask1=config[step].get("scmask1", None),
                         scmask2=config[step].get("scmask2", None),
+                        crgmask=config[step].get("crgmask", None),
                         tempi=5.0,
                         ofreq=config["TI"]["heat"]["ofreq"],
                         fname="heat.in",
@@ -355,11 +414,11 @@ def setTI(
 
                     logger.info("Pre-Pressurising ...")
                     tasks[f"{system}_{step}_{lmb}"]["command"].append( pressurize(
-                        defname="pre_pressing",
+                        defname="pre_pressing1",
                         prmtop=prmtop, 
                         conf="heat.rst7",
                         ref="heat.rst7",
-                        nsteps=1000,
+                        nsteps=5000,
                         dt=0.002,
                         temp=config['TI']['temp'],
                         resstraint_wt=config['TI']['pressurize']['resstraint_wt'],
@@ -373,8 +432,61 @@ def setTI(
                         timask2=config[step]["timask2"],
                         scmask1=config[step].get("scmask1", None),
                         scmask2=config[step].get("scmask2", None),
-                        ofreq=10,
-                        fname="pre_press.in",
+                        crgmask=config[step].get("crgmask", None),
+                        ofreq=100,
+                        fname="pre_pressing1.in",
+                        run=False
+                    ))
+
+                    logger.info("Pre-Pressurising2 ...")
+                    tasks[f"{system}_{step}_{lmb}"]["command"].append( pressurize(
+                        defname="pre_pressing2",
+                        prmtop=prmtop, 
+                        conf="pre_pressing1.rst7",
+                        ref="pre_pressing1.rst7",
+                        nsteps=5000,
+                        dt=0.002,
+                        temp=config['TI']['temp'],
+                        resstraint_wt=config['TI']['pressurize']['resstraint_wt'],
+                        irest=1, ntx=5,
+                        fep=True,
+                        clambda=lmb,
+                        scalpha=config[step]["scalpha"],
+                        scbeta=config[step]["scbeta"],
+                        ifsc=config[step]["ifsc"],
+                        timask1=config[step]["timask1"],
+                        timask2=config[step]["timask2"],
+                        scmask1=config[step].get("scmask1", None),
+                        scmask2=config[step].get("scmask2", None),
+                        crgmask=config[step].get("crgmask", None),
+                        ofreq=100,
+                        fname="pre_pressing2.in",
+                        run=False
+                    ))
+
+                    logger.info("Pre-Pressurising3 ...")
+                    tasks[f"{system}_{step}_{lmb}"]["command"].append( pressurize(
+                        defname="pre_pressing3",
+                        prmtop=prmtop, 
+                        conf="pre_pressing2.rst7",
+                        ref="pre_pressing2.rst7",
+                        nsteps=5000,
+                        dt=0.002,
+                        temp=config['TI']['temp'],
+                        resstraint_wt=config['TI']['pressurize']['resstraint_wt']*0.6,
+                        irest=1, ntx=5,
+                        fep=True,
+                        clambda=lmb,
+                        scalpha=config[step]["scalpha"],
+                        scbeta=config[step]["scbeta"],
+                        ifsc=config[step]["ifsc"],
+                        timask1=config[step]["timask1"],
+                        timask2=config[step]["timask2"],
+                        scmask1=config[step].get("scmask1", None),
+                        scmask2=config[step].get("scmask2", None),
+                        crgmask=config[step].get("crgmask", None),
+                        ofreq=100,
+                        fname="pre_pressing3.in",
                         run=False
                     ))
 
@@ -382,8 +494,8 @@ def setTI(
                     tasks[f"{system}_{step}_{lmb}"]["command"].append( pressurize(
                         defname="pressurize",
                         prmtop=prmtop, 
-                        conf="pre_press.rst7",
-                        ref="pre_press.rst7",
+                        conf="pre_pressing3.rst7",
+                        ref="pre_pressing3.rst7",
                         nsteps=config["TI"]["pressurize"]["nsteps"],
                         dt=0.002,
                         temp=config["TI"]["temp"],
@@ -398,6 +510,7 @@ def setTI(
                         timask2=config[step]["timask2"],
                         scmask1=config[step].get("scmask1", None),
                         scmask2=config[step].get("scmask2", None),
+                        crgmask=config[step].get("crgmask", None),
                         ofreq=config["TI"]["pressurize"]["ofreq"],
                         fname="pressurize.in",
                         run=False
@@ -428,6 +541,7 @@ def setTI(
                         timask2=config[step]["timask2"],
                         scmask1=config[step].get("scmask1", None),
                         scmask2=config[step].get("scmask2", None),
+                        crgmask=config[step].get("crgmask", None),
                         ntwe=config["TI"]["production"]["ntwe"],
                         ntwx=config["TI"]["production"]["ntwx"],
                         ntpr=config["TI"]["production"]["ntpr"],
@@ -435,32 +549,54 @@ def setTI(
                         fname="prod.in",
                         run=False
                     ))
+                    with open("run.sh", "w") as fp:
+                        fp.write("\n".join(tasks[f"{system}_{step}_{lmb}"]["command"]))
+                        
+    with open("task.json", "w") as fp:
+        json.dump(tasks, fp, indent=2)
+
     return tasks
 
 
-def submit_jobs(tasks, env, groups=-1, submit=True):
+def submit_jobs(tasks, env, ngroup=-1, submit=True):
     cwd = Path(os.getcwd())
     submit_scripts_dir = cwd.joinpath("submit")
     if not os.path.exists(submit_scripts_dir):
         os.mkdir(submit_scripts_dir)
     
     scripts = {}
+    script_head = ["#!/bin/bash"] + env + ["set -e"]
     for task, info in tasks.items():
-        script = ["#!/bin/bash"]
-        script += env
-        script.append(f"cd {info['path']}")
+        script = [f"cd {info['path']}"]
         script += info["command"]
         script += ["touch done.tag"]
         scripts[task] = script
     
-    if groups > 0:
-        ngroups = len(scripts.keys())
-        task_list = list(scripts.keys())
+    if ngroup > 0:
+        group_size= len(scripts) // ngroup + 1
+        keys = list(scripts.keys())
+        random.shuffle(keys)
+        for igroup in range(ngroup):
+            sub = submit_scripts_dir.joinpath(f"grouped.{igroup}.sh")
+            with open(sub, "w") as fp:
+                fp.write("\n".join(script_head))
+                fp.write("\n")
+                for task in keys[int(igroup*group_size):(igroup+1)*group_size]:
+                    # if not os.path.exists(Path(tasks[task]['path']).joinpath("done.tag")):
+                    fp.write("\n".join(scripts[task]))
+                    fp.write("\n")
+            if submit:
+                with set_directory(submit_scripts_dir):
+                    os.system(f"LLsub {sub.name} -s 6 -g volta:1")
+
+
         RuntimeError("Not implemented.")
     else:
         for task, script in scripts.items():
             sub = submit_scripts_dir.joinpath(f"{task}.sh")
             with open(sub, "w") as fp:
+                fp.write("\n".join(script_head))
+                fp.write("\n")
                 fp.write("\n".join(script))
 
             if submit:
@@ -473,7 +609,9 @@ def run(
         ppdb, 
         lpath1, lname1, 
         lpath2, lname2,
-        config
+        config,
+        submit=False,
+        ngroup=4
     ):
     cwd = Path(os.getcwd())
     tag = "done.tag"
@@ -490,7 +628,7 @@ def run(
     if not os.path.exists(fep_run_dir.joinpath(tag)):
         with set_directory(fep_run_dir):
             tasks = setTI(config, top_dir=prep_dir.resolve())
-            submit_jobs(tasks, config['slurm_env'], submit=False)
+            submit_jobs(tasks, config['slurm_env'], submit=submit, ngroup=ngroup)
             set_tag(tag)
     else:
         logger.info("feprun has already existed. skip through it.")

@@ -44,7 +44,7 @@ def em(
             f"ifsc = {ifsc},"
         ]
         if crgmask is not None:
-            script.append(f"crgmask={crgmask},")
+            script.append(f"crgmask = '{crgmask}',")
         if ifsc == 1:
             assert scmask1 is not None, "you are setting ifsc=1 indicates that soft core" \
             "is activated, however, scmask1 is not assigned."
@@ -114,7 +114,7 @@ def heat(
             f"ifsc = {ifsc},"
         ]
         if crgmask is not None:
-            script.append(f"crgmask={crgmask},")
+            script.append(f"crgmask = '{crgmask}',")
         if ifsc == 1:
             assert scmask1 is not None, "you are setting ifsc=1 indicates that soft core" \
             "is activated, however, scmask1 is not assigned."
@@ -191,7 +191,7 @@ def pressurize(
             f"ifsc = {ifsc},"
         ]
         if crgmask is not None:
-            script.append(f"crgmask={crgmask},")
+            script.append(f"crgmask = '{crgmask}',")
         if ifsc == 1:
             assert scmask1 is not None, "you are setting ifsc=1 indicates that soft core" \
             "is activated, however, scmask1 is not assigned."
@@ -406,19 +406,6 @@ def production(
         f"ntr = 1, restraint_wt = {resstraint_wt},",
         "restraintmask='!:WAT & !@H=',",
     ]
-
-    if fep:
-        script += [
-            f"icfe = 1, clambda = {clambda}, scalpha = {scalpha}, scbeta = {scbeta},",
-            "logdvdl = 0,",
-            f"timask1 = '{timask1}', timask2 = '{timask2}',",
-            f"ifsc = {ifsc}, crgmask = '{crgmask}',"
-            
-        ]
-        if scmask1 is not None:
-            script += [
-                f"scmask1='{scmask1}', scmask2='{scmask2}',"
-            ]
     
     if fep:
         script += [
@@ -428,7 +415,7 @@ def production(
             f"ifsc = {ifsc}, ifmbar = {ifmbar},"
         ]
         if crgmask is not None:
-            script.append(f"crgmask={crgmask},")
+            script.append(f"crgmask = '{crgmask}',")
         if ifsc == 1:
             assert scmask1 is not None, "you are setting ifsc=1 indicates that soft core" \
             "is activated, however, scmask1 is not assigned."

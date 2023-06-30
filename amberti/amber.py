@@ -110,8 +110,8 @@ def make_ligand_topology(
     
     # these files are supposed to be created.
     mol2 = f"{name}.{forcefield}.{fo}"
-    frcmod = f"{name}.frcmod"
-    lib = f"{name}.lib"
+    frcmod = f"{name}.{forcefield}.frcmod"
+    lib = f"{name}.{forcefield}.lib"
     pdb = f"{name}.pdb"
     antechamber(
         mol, ncharge, output=mol2, name=name, charge_method=charge_method, 
@@ -123,8 +123,8 @@ def make_ligand_topology(
         f"source leaprc.{forcefield}",
         f"loadamberparams {frcmod}",
         f"{name} = loadmol2 {mol2} ",
-        f"saveoff {name} {name}.lib",
-        f"savepdb {name} {name}.pdb",
+        f"saveoff {name} {lib}",
+        f"savepdb {name} {pdb}",
         "quit"
     ]
     tleap_in_file = f"tleap.{name}.in"
