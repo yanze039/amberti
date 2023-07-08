@@ -40,32 +40,22 @@ def create_simulation_box(
         "complex1 = combine {mol1 protein}",
         "complex2 = combine {mol2 protein}",
         "complex3 = combine {ligands protein}",
-
-        # create ligands in solution for vdw+bonded transformation
-        f"solvatebox complex1 {waterbox} {str(size_complex)} {str(resize)}",
-        "addions complex1 Na+ 0",
-        "savepdb complex1 complex_1.pdb",
-        "saveamberparm complex1 complex_1.parm7 complex_1.rst7",
-
-        # create ligands in solution for vdw+bonded transformation
-        f"solvatebox complex2 {waterbox} {str(size_complex)} {str(resize)}",
-        "addions complex2 Na+ 0",
-        "savepdb complex2 complex_2.pdb",
-        "saveamberparm complex2 complex_2.parm7 complex_2.rst7",
         
         # create ligands in solution for vdw+bonded transformation
         f"solvatebox ligands TIP3PBOX {size_ligand}",
-        "addions ligands Na+ 0",
+        # "addions ligands Na+ 0",
+        "addions ligands Na+ 13 Cl- 9",
         "savepdb ligands ligands_vdw_bonded.pdb",
         "saveamberparm ligands ligands_vdw_bonded.parm7 ligands_vdw_bonded.rst7",
 
         # create complex in solution for vdw+bonded transformation
         f"solvatebox complex3 TIP3PBOX {size_ligand} ",
-        "addions complex3 Na+ 0",
+        # "addions complex3 Na+ 0",
+        "addions complex3 Na+ 52 Cl- 49",
         "savepdb complex3 complex_vdw_bonded.pdb",
         "saveamberparm complex3 complex_vdw_bonded.parm7 complex_vdw_bonded.rst7",
-
         "quit"
+        
         ]
     fname = "tleap.buildtop.in"
     tleap("\n".join(scripts), fname=fname)

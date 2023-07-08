@@ -1,6 +1,13 @@
 from amberti.utils import run_command
 from amberti.logger import getLogger
+from alchemlyb.postprocessors.units import R_kJmol, kJ2kcal
+from alchemlyb.parsing.amber import SectionParser
+import pandas as pd
+import numpy as np
 import os
+
+
+k_b = R_kJmol * kJ2kcal
 
 logger = getLogger()
 
@@ -138,4 +145,57 @@ def make_ligand_topology(
 
     logger.info(f'{mol2}, {frcmod} are created successfully.')
 
+
+
+def extract_unk(outfile, T, mbar_lambdas):
+
+    beta = 1 / (k_b * T)
+
+    finished = False
+
+    all_mbar_energy = []
+    with SectionParser(outfile) as secp:
+        line = secp.skip_lines(5)
+
+        for line in secp:
+            if "      A V E R A G E S   O V E R" in line:
+                _ = secp.skip_after("^|=========================================")
+            elif line.startswith("MBAR Energy analysis"):
+
+                mbar = secp.extract_section(
+                    "^MBAR", "^ ---", mbar_lambdas, extra=line
+                )
+                all_mbar_energy.append(mbar)
+
+
+                if None in mbar:
+                    msg = "Something strange parsing the following MBAR section."
+                    msg += "\nMaybe the mbar_lambda values are incorrect?"
+                    logger.error("{}\n{}", msg, mbar)
+                    raise ValueError(msg)
+                
+                # print(mbar)
+
+        #         reference_energy = mbar[file_datum.mbar_lambda_idx]
+        #         for lmbda, energy in enumerate(mbar):
+        #             if energy > 0.0:
+        #                 high_E_cnt += 1
+
+        #             file_datum.mbar_energies[lmbda].append(
+        #                 beta * (energy - reference_energy)
+        #             )
+            elif line == "   5.  TIMINGS\n":
+                finished = True
+
+        # mbar_df = pd.DataFrame(
+        #     file_datum.mbar_energies,
+        #     index=np.array(file_datum.mbar_lambdas, dtype=np.float64),
+        #     columns=pd.MultiIndex.from_arrays(
+        #         [mbar_time, np.repeat(file_datum.clambda, len(mbar_time))],
+        #         names=["time", "lambdas"],
+        #     ),
+        # ).T
+
+
+    return np.array(all_mbar_energy)
 

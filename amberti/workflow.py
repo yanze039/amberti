@@ -31,6 +31,7 @@ def equilibrate_systems(
         prmtop = top_dir.joinpath(f"{system}_vdw_bonded.parm7")
         with set_directory(system_dir):
             logger.info("Pre-heating ...")
+            # just for debug
             heat(
                 defname="debug",
                 prmtop=prmtop, 
@@ -154,7 +155,7 @@ def equilibrate_systems(
                 nsteps=1000,
                 dt=0.002,
                 temp=config['prep']['temp'],
-                resstraint_wt=config['prep']['pressurize']['resstraint_wt'],
+                resstraint_wt=config['prep']['pressurize_res']['resstraint_wt'],
                 irest=1, ntx=5,
                 fep=True,
                 clambda=0.5,
@@ -176,10 +177,10 @@ def equilibrate_systems(
                 prmtop=prmtop, 
                 conf="pre_press.rst7",
                 ref="pre_press.rst7",
-                nsteps=config["prep"]["pressurize"]["nsteps"],
+                nsteps=config["prep"]["pressurize_res"]["nsteps"],
                 dt=0.002,
                 temp=config["prep"]["temp"],
-                resstraint_wt=config["prep"]["pressurize"]["resstraint_wt"],
+                resstraint_wt=config["prep"]["pressurize_res"]["resstraint_wt"],
                 irest=1, ntx=5,
                 fep=True,
                 clambda=0.5,
@@ -190,12 +191,12 @@ def equilibrate_systems(
                 timask2=config["prep"]["timask2"],
                 scmask1=config["prep"]["scmask1"],
                 scmask2=config["prep"]["scmask2"],
-                ofreq=config["prep"]["pressurize"]["ofreq"],
+                ofreq=config["prep"]["pressurize_res"]["ofreq"],
                 fname="pressurize.in",
                 run=True
             )
 
-            logger.info("Equilibrium finished.")
+            logger.info("Pressurising ...")
 
     return
 
@@ -286,7 +287,7 @@ def setTI(
                     os.mkdir(lmb_dir)
                 prmtop = top_dir.joinpath(f"{system}_{step}.parm7")
                 tasks[f"{system}_{step}_{lmb}"] = {}
-                tasks[f"{system}_{step}_{lmb}"]["path"] = lmb_dir.resolve()
+                tasks[f"{system}_{step}_{lmb}"]["path"] = str(lmb_dir.resolve())
                 tasks[f"{system}_{step}_{lmb}"]["command"] = []
 
                 with set_directory(lmb_dir):
@@ -306,6 +307,8 @@ def setTI(
                         scalpha=config[step]["scalpha"],
                         scbeta=config[step]["scbeta"],
                         ifsc=config[step]["ifsc"],
+                        aces=config[step].get("aces", 0),
+                        aces_setting=config.get("aces_setting", None),
                         timask1=config[step]["timask1"],
                         timask2=config[step]["timask2"],
                         scmask1=config[step].get("scmask1", None),
@@ -330,6 +333,8 @@ def setTI(
                         scalpha=config[step]["scalpha"],
                         scbeta=config[step]["scbeta"],
                         ifsc=config[step]["ifsc"],
+                        aces=config[step].get("aces", 0),
+                        aces_setting=config.get("aces_setting", None),
                         timask1=config[step]["timask1"],
                         timask2=config[step]["timask2"],
                         scmask1=config[step].get("scmask1", None),
@@ -354,6 +359,8 @@ def setTI(
                         scalpha=config[step]["scalpha"],
                         scbeta=config[step]["scbeta"],
                         ifsc=config[step]["ifsc"],
+                        aces=config[step].get("aces", 0),
+                        aces_setting=config.get("aces_setting", None),
                         timask1=config[step]["timask1"],
                         timask2=config[step]["timask2"],
                         scmask1=config[step].get("scmask1", None),
@@ -378,6 +385,8 @@ def setTI(
                         scalpha=config[step]["scalpha"],
                         scbeta=config[step]["scbeta"],
                         ifsc=config[step]["ifsc"],
+                        aces=config[step].get("aces", 0),
+                        aces_setting=config.get("aces_setting", None),
                         timask1=config[step]["timask1"],
                         timask2=config[step]["timask2"],
                         scmask1=config[step].get("scmask1", None),
@@ -401,6 +410,8 @@ def setTI(
                         scalpha=config[step]["scalpha"],
                         scbeta=config[step]["scbeta"],
                         ifsc=config[step]["ifsc"],
+                        aces=config[step].get("aces", 0),
+                        aces_setting=config.get("aces_setting", None),
                         timask1=config[step]["timask1"],
                         timask2=config[step]["timask2"],
                         scmask1=config[step].get("scmask1", None),
@@ -421,13 +432,15 @@ def setTI(
                         nsteps=5000,
                         dt=0.002,
                         temp=config['TI']['temp'],
-                        resstraint_wt=config['TI']['pressurize']['resstraint_wt'],
+                        resstraint_wt=config['TI']['pressurize_res']['resstraint_wt'],
                         irest=1, ntx=5,
                         fep=True,
                         clambda=lmb,
                         scalpha=config[step]["scalpha"],
                         scbeta=config[step]["scbeta"],
                         ifsc=config[step]["ifsc"],
+                        aces=config[step].get("aces", 0),
+                        aces_setting=config.get("aces_setting", None),
                         timask1=config[step]["timask1"],
                         timask2=config[step]["timask2"],
                         scmask1=config[step].get("scmask1", None),
@@ -447,13 +460,15 @@ def setTI(
                         nsteps=5000,
                         dt=0.002,
                         temp=config['TI']['temp'],
-                        resstraint_wt=config['TI']['pressurize']['resstraint_wt'],
+                        resstraint_wt=config['TI']['pressurize_res']['resstraint_wt'],
                         irest=1, ntx=5,
                         fep=True,
                         clambda=lmb,
                         scalpha=config[step]["scalpha"],
                         scbeta=config[step]["scbeta"],
                         ifsc=config[step]["ifsc"],
+                        aces=config[step].get("aces", 0),
+                        aces_setting=config.get("aces_setting", None),
                         timask1=config[step]["timask1"],
                         timask2=config[step]["timask2"],
                         scmask1=config[step].get("scmask1", None),
@@ -473,13 +488,15 @@ def setTI(
                         nsteps=5000,
                         dt=0.002,
                         temp=config['TI']['temp'],
-                        resstraint_wt=config['TI']['pressurize']['resstraint_wt']*0.6,
+                        resstraint_wt=config['TI']['pressurize_res']['resstraint_wt']*0.6,
                         irest=1, ntx=5,
                         fep=True,
                         clambda=lmb,
                         scalpha=config[step]["scalpha"],
                         scbeta=config[step]["scbeta"],
                         ifsc=config[step]["ifsc"],
+                        aces=config[step].get("aces", 0),
+                        aces_setting=config.get("aces_setting", None),
                         timask1=config[step]["timask1"],
                         timask2=config[step]["timask2"],
                         scmask1=config[step].get("scmask1", None),
@@ -492,20 +509,50 @@ def setTI(
 
                     logger.info("Pressurising ...")
                     tasks[f"{system}_{step}_{lmb}"]["command"].append( pressurize(
-                        defname="pressurize",
+                        defname="pressurize_res",
                         prmtop=prmtop, 
                         conf="pre_pressing3.rst7",
                         ref="pre_pressing3.rst7",
-                        nsteps=config["TI"]["pressurize"]["nsteps"],
+                        nsteps=config["TI"]["pressurize_res"]["nsteps"],
                         dt=0.002,
                         temp=config["TI"]["temp"],
-                        resstraint_wt=config["TI"]["pressurize"]["resstraint_wt"],
+                        resstraint_wt=config["TI"]["pressurize_res"]["resstraint_wt"],
                         irest=1, ntx=5,
                         fep=True,
                         clambda=lmb,
                         scalpha=config[step]["scalpha"],
                         scbeta=config[step]["scbeta"],
                         ifsc=config[step]["ifsc"],
+                        aces=config[step].get("aces", 0),
+                        aces_setting=config.get("aces_setting", None),
+                        timask1=config[step]["timask1"],
+                        timask2=config[step]["timask2"],
+                        scmask1=config[step].get("scmask1", None),
+                        scmask2=config[step].get("scmask2", None),
+                        crgmask=config[step].get("crgmask", None),
+                        ofreq=config["TI"]["pressurize_res"]["ofreq"],
+                        fname="pressurize_res.in",
+                        run=False
+                    ))
+
+                    logger.info("Pressurising ...")
+                    tasks[f"{system}_{step}_{lmb}"]["command"].append( pressurize(
+                        defname="pressurize",
+                        prmtop=prmtop, 
+                        conf="pressurize_res.rst7",
+                        ref="pressurize_res.rst7",
+                        nsteps=config["TI"]["pressurize"]["nsteps"],
+                        dt=0.002,
+                        temp=config["TI"]["temp"],
+                        resstraint_wt=None,
+                        irest=1, ntx=5,
+                        fep=True,
+                        clambda=lmb,
+                        scalpha=config[step]["scalpha"],
+                        scbeta=config[step]["scbeta"],
+                        ifsc=config[step]["ifsc"],
+                        aces=config[step].get("aces", 0),
+                        aces_setting=config.get("aces_setting", None),
                         timask1=config[step]["timask1"],
                         timask2=config[step]["timask2"],
                         scmask1=config[step].get("scmask1", None),
@@ -527,7 +574,7 @@ def setTI(
                         nsteps=config["TI"]["production"]["nsteps"],
                         dt=0.002,
                         temp=config["TI"]["temp"],
-                        resstraint_wt=config["TI"]["production"]["resstraint_wt"],
+                        resstraint_wt=None,
                         irest=1, ntx=5,
                         fep=True,
                         clambda=lmb,
@@ -537,6 +584,8 @@ def setTI(
                         mbar_states=len(config[step]["lambdas"]),
                         mbar_lambda=print_list(config[step]["lambdas"], by=", "),
                         ifsc=config[step]["ifsc"],
+                        aces=config[step].get("aces", 0),
+                        aces_setting=config.get("aces_setting", None),
                         timask1=config[step]["timask1"],
                         timask2=config[step]["timask2"],
                         scmask1=config[step].get("scmask1", None),
@@ -551,14 +600,17 @@ def setTI(
                     ))
                     with open("run.sh", "w") as fp:
                         fp.write("\n".join(tasks[f"{system}_{step}_{lmb}"]["command"]))
-                        
-    with open("task.json", "w") as fp:
+                        fp.write("\n")
+                        fp.write("touch done.tag")
+                        fp.write("\n")
+    print(tasks)
+    with open("tasks.json", "w") as fp:
         json.dump(tasks, fp, indent=2)
 
     return tasks
 
 
-def submit_jobs(tasks, env, ngroup=-1, submit=True):
+def submit_jobs(tasks, env, ngroup=-1, submit=False):
     cwd = Path(os.getcwd())
     submit_scripts_dir = cwd.joinpath("submit")
     if not os.path.exists(submit_scripts_dir):
@@ -573,24 +625,28 @@ def submit_jobs(tasks, env, ngroup=-1, submit=True):
         scripts[task] = script
     
     if ngroup > 0:
-        group_size= len(scripts) // ngroup + 1
+        group_size = len(scripts) // ngroup
         keys = list(scripts.keys())
         random.shuffle(keys)
         for igroup in range(ngroup):
+            if igroup < len(scripts) % ngroup:
+                igroup_size = group_size + 1
+            else:
+                igroup_size = group_size
+
             sub = submit_scripts_dir.joinpath(f"grouped.{igroup}.sh")
             with open(sub, "w") as fp:
                 fp.write("\n".join(script_head))
                 fp.write("\n")
-                for task in keys[int(igroup*group_size):(igroup+1)*group_size]:
+                for _ in range(igroup_size):
                     # if not os.path.exists(Path(tasks[task]['path']).joinpath("done.tag")):
-                    fp.write("\n".join(scripts[task]))
+                    fp.write("\n".join(scripts[keys.pop()]))
                     fp.write("\n")
             if submit:
                 with set_directory(submit_scripts_dir):
                     os.system(f"LLsub {sub.name} -s 6 -g volta:1")
-
-
-        RuntimeError("Not implemented.")
+        # RuntimeError("Not implemented.")
+        assert len(keys) == 0
     else:
         for task, script in scripts.items():
             sub = submit_scripts_dir.joinpath(f"{task}.sh")
@@ -611,7 +667,7 @@ def run(
         lpath2, lname2,
         config,
         submit=False,
-        ngroup=4
+        ngroup=8
     ):
     cwd = Path(os.getcwd())
     tag = "done.tag"

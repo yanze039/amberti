@@ -17,6 +17,8 @@ def em(
         scalpha=None,
         scbeta=None,
         ifsc=1,
+        aces=0,
+        aces_setting=None,
         crgmask=None,
         timask1=None,
         timask2=None,
@@ -51,6 +53,12 @@ def em(
             assert scmask2 is not None, "you are setting ifsc=1 indicates that soft core" \
             "is activated, however, scmask2 is not assigned."
             script.append(f"scmask1 = '{scmask1}', scmask2 = '{scmask2}',")
+            if aces == 1:
+                assert aces_setting is not None, "you are setting aces=1 indicates that ACES is a dict."
+                for key, value in aces_setting.items():
+                    script.append(f"{key} = {value},")
+            else:
+                script.append(f"scalpha = {scalpha}, scbeta = {scbeta},")
 
     script += [
         "/",
@@ -81,6 +89,8 @@ def heat(
         scalpha=None,
         scbeta=None,
         ifsc=1,
+        aces=0,
+        aces_setting=None,
         crgmask=None,
         timask1=None,
         timask2=None,
@@ -121,6 +131,12 @@ def heat(
             assert scmask2 is not None, "you are setting ifsc=1 indicates that soft core" \
             "is activated, however, scmask2 is not assigned."
             script.append(f"scmask1 = '{scmask1}', scmask2 = '{scmask2}',")
+            if aces == 1:
+                assert aces_setting is not None, "you are setting aces=1 indicates that ACES is a dict."
+                for key, value in aces_setting.items():
+                    script.append(f"{key} = {value},")
+            else:
+                script.append(f"scalpha = {scalpha}, scbeta = {scbeta},")
     
     script += [
         "/",
@@ -158,6 +174,8 @@ def pressurize(
         scalpha=None,
         scbeta=None,
         ifsc=1,
+        aces=0,
+        aces_setting=None,
         crgmask=None,
         timask1=None,
         timask2=None,
@@ -178,10 +196,13 @@ def pressurize(
         "ntc = 2, ntf = 1,",
         "ioutfm = 1, iwrap = 1,",
         f"ntwe = {ofreq}, ntwx = {ofreq}, ntpr = {ofreq}, ntwr = {ofreq},",
-
-        f"ntr = 1, restraint_wt = {resstraint_wt},",
-        "restraintmask='!:WAT & !@H=',",
     ]
+
+    if resstraint_wt is not None:
+        script += [
+            f"ntr = 1, restraint_wt = {resstraint_wt},",
+            "restraintmask='!:WAT & !@H=',",
+        ]
 
     if fep:
         script += [
@@ -198,6 +219,12 @@ def pressurize(
             assert scmask2 is not None, "you are setting ifsc=1 indicates that soft core" \
             "is activated, however, scmask2 is not assigned."
             script.append(f"scmask1 = '{scmask1}', scmask2 = '{scmask2}',")
+            if aces == 1:
+                assert aces_setting is not None, "you are setting aces=1 indicates that ACES is a dict."
+                for key, value in aces_setting.items():
+                    script.append(f"{key} = {value},")
+            else:
+                script.append(f"scalpha = {scalpha}, scbeta = {scbeta},")
 
     script += [
         "/",
@@ -307,7 +334,7 @@ def equilibrium(
 
     logger.info("Pre-Pressurising ...")
     pressurize(
-        defname="pre_pressing",
+        defname="pre_pressing_1",
         prmtop=prmtop, 
         conf="heat.rst7",
         ref="heat.rst7",
@@ -322,16 +349,37 @@ def equilibrium(
         scmask1=scmask1,
         scmask2=scmask2,
         ofreq=10,
-        fname="pre_press.in"
+        fname="pre_pressing_1.in"
     )
-    assert os.path.exists("pre_pressing.rst7")
+    assert os.path.exists("pre_pressing_1.rst7")
+
+    logger.info("Pre-Pressurising ...")
+    pressurize(
+        defname="pre_pressing_2",
+        prmtop=prmtop, 
+        conf="pre_pressing_1.rst7",
+        ref="pre_pressing_1.rst7",
+        nsteps=5000,
+        dt=0.002,
+        temp=temp,
+        resstraint_wt=resstraint_wt,
+        irest=1, ntx=5,
+        fep=True,
+        timask1=timask1,
+        timask2=timask2,
+        scmask1=scmask1,
+        scmask2=scmask2,
+        ofreq=10,
+        fname="pre_pressing_2.in"
+    )
+    assert os.path.exists("pre_pressing_2.rst7")
 
     logger.info("Pressurising ...")
     pressurize(
         defname="pressing",
         prmtop=prmtop, 
-        conf="pre_press.rst7",
-        ref="pre_press.rst7",
+        conf="pre_pressing_2.rst7",
+        ref="pre_pressing_2.rst7",
         nsteps=nsteps_press,
         dt=0.002,
         temp=temp,
@@ -360,7 +408,7 @@ def production(
         nsteps=10000,
         dt=0.002,
         temp=300,
-        resstraint_wt=5.00,
+        resstraint_wt=None,
         irest=1, ntx=5,
         fep=True,
         clambda=None,
@@ -370,6 +418,8 @@ def production(
         mbar_states=None,
         mbar_lambda=None,
         ifsc=0,
+        aces=1,
+        aces_setting=None,
         crgmask=None,
         timask1=None,
         timask2=None,
@@ -402,14 +452,17 @@ def production(
         "ntc = 2, ntf = 1,",
         "ioutfm = 1, iwrap = 1,",
         f"ntwe = {ntwe}, ntwx = {ntwx}, ntpr = {ntpr}, ntwr = {ntwr},",
-
-        f"ntr = 1, restraint_wt = {resstraint_wt},",
-        "restraintmask='!:WAT & !@H=',",
     ]
+    if resstraint_wt is not None:
+        script += [
+            f"ntr = 1, restraint_wt = {resstraint_wt},",
+            "restraintmask='!:WAT & !@H=',",
+        ]
     
+
     if fep:
         script += [
-            f"icfe = 1, clambda = {clambda}, scalpha = {scalpha}, scbeta = {scbeta},",
+            f"icfe = 1, clambda = {clambda}",
             "logdvdl = 0,",
             f"timask1 = '{timask1}', timask2 = '{timask2}',",
             f"ifsc = {ifsc}, ifmbar = {ifmbar},"
@@ -422,6 +475,13 @@ def production(
             assert scmask2 is not None, "you are setting ifsc=1 indicates that soft core" \
             "is activated, however, scmask2 is not assigned."
             script.append(f"scmask1 = '{scmask1}', scmask2 = '{scmask2}',")
+            if aces == 1:
+                assert aces_setting is not None, "you are setting aces=1 indicates that ACES is a dict."
+                for key, value in aces_setting.items():
+                    script.append(f"{key} = {value},")
+            else:
+                script.append(f"scalpha = {scalpha}, scbeta = {scbeta},")
+            
         if ifmbar == 1:
             assert mbar_states is not None, "you are setting ifmbar=1 indicates that MBAR" \
             "is activated, however, mbar_states is not assigned."
