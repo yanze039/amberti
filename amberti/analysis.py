@@ -12,7 +12,7 @@ import json
 import matplotlib.pyplot as plt
 
 
-def analyze(workpath, output_dir, filename, temp=300, mode='ti'):
+def analyze(workpath, output_dir, filename, temp=300, mode='mbar'):
     base_dir = Path(workpath)
     output_dir = Path(output_dir)
     if not os.path.exists(output_dir):
@@ -25,32 +25,16 @@ def analyze(workpath, output_dir, filename, temp=300, mode='ti'):
             lmd_lists = list(jobdir.glob("[0-9]*.*[0-9]"))
             lmd_lists.sort()
             data_list = []
-            # if mode == "ti":
-            #     for lmd in lmd_lists:
-            #         data1 = extract_dHdl(lmd.joinpath(filename), T=temp)
-            #         # data2 = extract_u_nk(lmd.joinpath(filename), T=temp)
-            #         print(data1)
-            #         # decorrelated_dhdl = decorrelate_dhdl(data1, remove_burnin=True)
-            #         data_list.append(data1)
-            #         # data_list.append(data2)
-            #     dHdl = alchemlyb.concat(data_list)
-            #     # u_nk = alchemlyb.concat(data_list)
-            #     ti = TI()
-            #     ti.fit(dHdl)
-            #     fe = ti.delta_f_
-            #     # mbar = MBAR()
-            #     # mbar.fit(u_nk)
-            #     # fe = mbar.delta_f_
             if mode == 'mbar':
                 for lmd in lmd_lists:
                     print(lmd)
                     data2 = extract_u_nk(lmd.joinpath(filename), T=temp)
-                    # decorrelated_dhdl = decorrelate_dhdl(data1, remove_burnin=True)
-                    data_list.append(data2)
+                    decorrelated_dhdl = decorrelate_dhdl(data2, remove_burnin=True)
+                    # data_list.append(data2)
+                    data_list.append(decorrelated_dhdl)
                 u_nk = alchemlyb.concat(data_list)
                 u_nk = u_nk.sort_index(level=u_nk.index.names[1:])
-                print(u_nk)
-                exit(0)
+
                 mbar = MBAR()
                 mbar.fit(u_nk)
                 fe = mbar.delta_f_
@@ -60,25 +44,10 @@ def analyze(workpath, output_dir, filename, temp=300, mode='ti'):
                 raise RuntimeError()
             result[f"{cl}-{job}"] = fe.loc[0.00, 1.00]
             # R_c, running_average = fwdrev_cumavg_Rc(data_list, tol=2)
-            df = forward_backward_convergence(data_list, mode)
+            df = forward_backward_convergence(data_list)
             ax = plot_convergence(df)
             ax.figure.savefig(output_dir.joinpath(f'dF_t_{cl}_{job}.png'))
             
-            plt.figure()
-            query_lambda = 0.5
-            for ii in range(len(data_list)):
-                print(data_list[ii][query_lambda])
-                plt.hist(data_list[ii][query_lambda], alpha=0.7, label=f"{data_list[ii].index[0][1]:.1f}")
-            plt.xlabel('Energy (kcal/mol)')
-            plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), title='$\lambda$')
-            plt.title(f'{cl}-{job}-Hamiltonian under $\lambda={query_lambda}$')
-            plt.ylabel('Frequency')
-            plt.tight_layout()    
-            plt.ylim(0, 60)
-            plt.savefig(output_dir.joinpath(f'overlap-{cl}-{job}-Hamiltonian-{query_lambda}.png'))
-        break
-    print(fe)
-    return
 
     ddG = result["complex-vdw_bonded"] + result["complex-recharge"] + result["complex-decharge"] - \
         (result["ligands-vdw_bonded"] + result["ligands-recharge"] + result["ligands-decharge"])

@@ -36,7 +36,7 @@ def em(
         "ntpr = 20, ntwe = 20,",
         "ntb = 1,",
         f"ntr = 1, restraint_wt = {resstraint_wt},",
-        "restraintmask='!:WAT & !@H=',",
+        "restraintmask='!:WAT,Cl-,K+,Na+ & !@H=',",
     ]
     if fep:
         script += [
@@ -113,7 +113,7 @@ def heat(
         "ioutfm = 1, iwrap = 1,",
         f"ntwe = {ofreq}, ntwx = {ofreq}, ntpr = {ofreq}, ntwr = {ofreq},",
         f"ntr = 1, restraint_wt = {resstraint_wt},",
-        "restraintmask='!:WAT & !@H=',",
+        "restraintmask='!:WAT,Cl-,K+,Na+ & !@H=',",
     ]
 
     if fep:
@@ -201,7 +201,7 @@ def pressurize(
     if resstraint_wt is not None:
         script += [
             f"ntr = 1, restraint_wt = {resstraint_wt},",
-            "restraintmask='!:WAT & !@H=',",
+            "restraintmask='!:WAT,Cl-,K+,Na+ & !@H=',"
         ]
 
     if fep:
@@ -447,7 +447,7 @@ def production(
         "&cntrl",
         f"imin = 0, nstlim = {nsteps}, irest = {irest}, ntx = {ntx}, dt = {dt},",
         f"ntt = 3, temp0 = {temp}, gamma_ln = 2.0, ig = -1,",
-        "ntp = 1, pres0 = 1.0, taup = 2.0,",
+        "ntp = 1, barostat = 2, pres0 = 1.0, taup = 5.0,",
         "ntb = 2,",
         "ntc = 2, ntf = 1,",
         "ioutfm = 1, iwrap = 1,",
@@ -456,13 +456,13 @@ def production(
     if resstraint_wt is not None:
         script += [
             f"ntr = 1, restraint_wt = {resstraint_wt},",
-            "restraintmask='!:WAT & !@H=',",
+            "restraintmask='!:WAT,Cl-,K+,Na+ & !@H=',"
         ]
     
 
     if fep:
         script += [
-            f"icfe = 1, clambda = {clambda}",
+            f"icfe = 1, clambda = {clambda},",
             "logdvdl = 0,",
             f"timask1 = '{timask1}', timask2 = '{timask2}',",
             f"ifsc = {ifsc}, ifmbar = {ifmbar},"
@@ -487,7 +487,7 @@ def production(
             "is activated, however, mbar_states is not assigned."
             assert mbar_lambda is not None, "you are setting ifmbar=1 indicates that MBAR" \
             "is activated, however, mbar_lambda is not assigned."
-            script.append(f"mbar_states = {mbar_states}, mbar_lambda = {mbar_lambda},")
+            script.append(f"mbar_states = {mbar_states}, mbar_lambda = {mbar_lambda}")
 
     script += [
         "/",

@@ -1,0 +1,114 @@
+{
+    "ligand_forcefield": "gaff2",
+    "protein_forcefield": "ff14SB",
+    "ligand_box_size": 15.0,
+    "complex_box_size": 12.0,
+    "resize": 0.75,
+    "prep": {
+        "temp": 300,
+        "timask1": ":LIG",
+        "timask2": ":MOD",
+        "scmask1": ":LIG@O2,H12",
+        "scmask2": ":MOD@F1",
+        "em": {
+            "maxcyc": 2000,
+            "resstraint_wt": 5.0
+        },
+        "heat": {
+            "nsteps": 50000,
+            "resstraint_wt": 5.0,
+            "ofreq": 5000
+        },
+        "pressurize_res": {
+            "nsteps": 100000,
+            "resstraint_wt": 5.0,
+            "ofreq": 10000
+        }
+    },
+    "TI": {
+        "temp": 300,
+        "em": {
+            "maxcyc": 5000,
+            "resstraint_wt": 5.0
+        },
+        "heat": {
+            "nsteps": 50000,
+            "resstraint_wt": 5.0,
+            "ofreq": 5000
+        },
+        "pressurize_res": {
+            "nsteps": 300000,
+            "resstraint_wt": 5.0,
+            "ofreq": 3000
+        },
+        "pressurize": {
+            "nsteps": 500000,
+            "ofreq": 5000
+        },
+        "production": {
+            "nsteps": 3000000,
+            "resstraint_wt": 5.0,
+            "ntwe": 3000,
+            "ntwx": 3000,
+            "ntwr": 2000,
+            "ntpr": 3000
+        }
+    },
+    "decharge": {
+        "lambdas": [
+            0.0, 0.04794, 0.11505, 0.20634, 0.31608, 0.43738, 0.56262, 0.68392, 0.79366, 0.88495, 0.95206, 1.0
+        ],
+        "scalpha": 0.5,
+        "scbeta": 12.0,
+        "ifsc": 0,
+        "timask1": ":1",
+        "timask2": ":2",
+        "crgmask": ":2@O2,H12"
+    },
+    "vdw_bonded": {
+        "lambdas": [
+            0.0, 0.00922, 0.04794, 0.11505, 0.20634, 0.31608, 0.43738, 0.56262, 0.68392, 0.79366, 0.88495, 0.95206, 0.99078, 0.995, 1.0
+        ],
+        "ifsc": 1,
+        "aces": 0,
+        "scalpha": 0.5,
+        "scbeta": 12.0,
+        "timask1": ":1",
+        "timask2": ":2",
+        "scmask1": ":1@O2,H12",
+        "scmask2": ":2@F1",
+        "crgmask": ":1@O2,H12 | :2@F1"
+    },
+    "recharge": {
+        "lambdas": [
+            0.0, 0.04794, 0.11505, 0.20634, 0.31608, 0.43738, 0.56262, 0.68392, 0.79366, 0.88495, 0.95206, 1.0
+        ],
+        "scalpha": 0.5,
+        "scbeta": 12.0,
+        "ifsc": 0,
+        "timask1": ":1",
+        "timask2": ":2",
+        "crgmask": ":1@F1"
+    },
+    "aces_setting": {
+        "scalpha": 0.5,
+        "scbeta": 1.0,
+        "gti_cut": 1,
+        "gti_output": 1,
+        "gti_add_sc": 5,
+        "gti_scale_beta": 1,
+        "gti_cut_sc_on": 8,
+        "gti_cut_sc_off": 10,
+        "gti_lam_sch": 1,
+        "gti_ele_sc": 1,
+        "gti_vdw_sc": 1,
+        "gti_cut_sc": 2,
+        "gti_ele_exp": 2,
+        "gti_vdw_exp": 2
+    },
+    "slurm_env": [
+        "source /etc/profile",
+        "module load cuda/11.2",
+        "source $HOME/env/amber22.env"
+    ]
+}

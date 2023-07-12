@@ -2,6 +2,7 @@ from amberti.logger import getLogger
 from amberti.amber import tleap
 import os
 import pytraj as pt
+import parmed as pmd
 
 logger = getLogger()
 
@@ -44,14 +45,14 @@ def create_simulation_box(
         # create ligands in solution for vdw+bonded transformation
         f"solvatebox ligands TIP3PBOX {size_ligand}",
         # "addions ligands Na+ 0",
-        "addions ligands Na+ 13 Cl- 9",
+        "addions ligands Na+ 12 Cl- 10",
         "savepdb ligands ligands_vdw_bonded.pdb",
         "saveamberparm ligands ligands_vdw_bonded.parm7 ligands_vdw_bonded.rst7",
 
         # create complex in solution for vdw+bonded transformation
         f"solvatebox complex3 TIP3PBOX {size_ligand} ",
         # "addions complex3 Na+ 0",
-        "addions complex3 Na+ 52 Cl- 49",
+        "addions complex3 Na+ 51 Cl- 50",
         "savepdb complex3 complex_vdw_bonded.pdb",
         "saveamberparm complex3 complex_vdw_bonded.parm7 complex_vdw_bonded.rst7",
         "quit"
