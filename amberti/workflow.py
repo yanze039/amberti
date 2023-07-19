@@ -197,7 +197,6 @@ def equilibrate_systems(
             )
 
             logger.info("Pressurising ...")
-
     return
 
 
@@ -244,6 +243,10 @@ def prep(ppdb, lpath1, lname1, lpath2, lname2, config):
                      f"{system}_{lname1}.pdb", select=":1", overwrite=True)
         extract_conf(f"{system}_vdw_bonded.rst7", f"{system}_vdw_bonded.parm7", 
                      f"{system}_{lname2}.pdb", select=":2", overwrite=True)
+        # for unified protocol
+        shutil.copy(f"{system}/pressurize.rst7", f"{system}_unified.rst7")
+        shutil.copy(f"{system}_vdw_bonded.parm7", f"{system}_unified.parm7")
+
     
     make_charge_transform(
             lib1, lib2, 
@@ -261,12 +264,17 @@ def prep(ppdb, lpath1, lname1, lpath2, lname2, config):
 def setTI(
         config,
         top_dir,
+        protocol="split",
+        remd=False,
     ):
-    """
-        To shedule the lambda list, a dict is desired here.
-    """
+
     systems = ["ligands", "complex"]
-    steps = ["decharge", "vdw_bonded", "recharge"]
+
+    if protocol == "split":
+        steps = ["decharge", "vdw_bonded", "recharge"] 
+    elif protocol == "unified":
+        steps = ["unified"]
+
     top_dir = Path(top_dir)
     tasks = {}
     
@@ -576,6 +584,9 @@ def setTI(
                         temp=config["TI"]["temp"],
                         resstraint_wt=None,
                         irest=1, ntx=5,
+                        iremd=1 if config['remd'] else 0,
+                        numexchg=config["TI"]["production"]['numexchg'],
+                        gremd_acyc=1 if config['remd'] else None,
                         fep=True,
                         clambda=lmb,
                         scalpha=config[step]["scalpha"],
@@ -603,21 +614,80 @@ def setTI(
                         fp.write("\n")
                         fp.write("touch done.tag")
                         fp.write("\n")
-    print(tasks)
-    with open("tasks.json", "w") as fp:
-        json.dump(tasks, fp, indent=2)
+    if remd:
+        # write the groupfile
+        n_task = len(tasks[f"{systems[0]}_{steps[0]}_{config[step]['lambdas'][0]}"]["command"])
+        step = steps[0]
+        run_files = []
+        for system in systems:
+            task_list = []
+            system_dir = cwd.joinpath(system)
+            groupfile_dir = system_dir.joinpath("groupfile")
+            output_dir = system_dir.joinpath("output")
+            for idir in [groupfile_dir, output_dir]: 
+                if not os.path.exists(idir):
+                    os.mkdir(idir)
+            
+            for task in range(n_task):
+                if task in [1, 3]:
+                    for lmd in config[step]['lambdas']:
+                        old_command = tasks[f"{system}_{step}_{lmd}"]["command"][task]
+                        new_command_line = [config['serial_execute']] + [
+                            ii if "-" in ii else str(Path(tasks[f"{system}_{step}_{lmd}"]["path"]).joinpath(ii)) for ii in old_command.split()[1:]
+                        ]
+                        task_list.append(f"{' '.join(new_command_line)}")
+                else:
+                    task_file = groupfile_dir.joinpath(f"task.{task}.groupfile")
+                    with open(task_file, "w") as fp:
+                        for lmd in config[step]['lambdas']:
+                            index_i = tasks[f"{system}_{step}_{lmd}"]["command"][task].index("-i")
+                            old_command = tasks[f"{system}_{step}_{lmd}"]["command"][task][index_i:]
+                            new_command_line = [
+                                ii if "-" in ii else str(Path(tasks[f"{system}_{step}_{lmd}"]["path"]).joinpath(ii)) for ii in old_command.split() 
+                            ]
+                            fp.write(f"{' '.join(new_command_line)}\n")
 
-    return tasks
+                    n_lambdas = len(config[step]['lambdas'])
+                    if task < n_task - 1:
+                        command = f"mpirun  --oversubscribe -np {config['np']} {config['mpi_execute']} -ng {config['ng']} -groupfile {str(task_file)}"
+                    else:
+                        command = f"mpirun  --oversubscribe -np {config['np']} {config['mpi_execute']} -rem 3" \
+                                    f" -remlog {str(output_dir)}/remt.{task}.log -ng {config['ng']} -groupfile {str(task_file)}"
+                    task_list.append(command)
+
+            with open(groupfile_dir.joinpath(f"run.sh"), "w") as fp:
+                fp.write("\n".join(task_list))
+                # fp.write("\ntouch done.tag\n")
+            run_files.append(groupfile_dir.joinpath(f"run.sh"))
+        return run_files
+
+    else:
+        with open("tasks.json", "w") as fp:
+            json.dump(tasks, fp, indent=2)
+
+        return tasks
 
 
-def submit_jobs(tasks, env, ngroup=-1, submit=False):
+def submit_jobs(tasks, env, ngroup=-2, submit=False, n_lambda=-1):
     cwd = Path(os.getcwd())
     submit_scripts_dir = cwd.joinpath("submit")
     if not os.path.exists(submit_scripts_dir):
         os.mkdir(submit_scripts_dir)
-    
+
     scripts = {}
     script_head = ["#!/bin/bash"] + env + ["set -e"]
+    if ngroup == -2:
+        logger.info("REMD is enabled.")
+        for idx, task in enumerate(tasks):
+            script = [f"cd {task.parent}"]
+            script += [f"[ ! -f done.tag ] && bash run.sh && touch done.tag"]
+            sub = submit_scripts_dir.joinpath(f"unified.{idx}.sh")
+            with open(sub, "w") as fp:
+                fp.write("\n".join(script_head))
+                fp.write("\n")
+                fp.write("\n".join(script))
+        return 
+
     for task, info in tasks.items():
         script = [f"cd {info['path']}"]
         script += info["command"]
@@ -645,7 +715,6 @@ def submit_jobs(tasks, env, ngroup=-1, submit=False):
             if submit:
                 with set_directory(submit_scripts_dir):
                     os.system(f"LLsub {sub.name} -s 6 -g volta:1")
-        # RuntimeError("Not implemented.")
         assert len(keys) == 0
     else:
         for task, script in scripts.items():
@@ -667,7 +736,9 @@ def run(
         lpath2, lname2,
         config,
         submit=False,
-        ngroup=8
+        ngroup=8,
+        fep_dir_name="fep",
+        overwrite=True
     ):
     cwd = Path(os.getcwd())
     tag = "done.tag"
@@ -680,11 +751,13 @@ def run(
     else:
         logger.info("preparation has already existed. skip through it.")
 
-    fep_run_dir = cwd.joinpath("fep")
-    if not os.path.exists(fep_run_dir.joinpath(tag)):
+    fep_run_dir = cwd.joinpath(fep_dir_name)
+    if overwrite:  # not os.path.exists(fep_run_dir.joinpath(tag)) or 
         with set_directory(fep_run_dir):
-            tasks = setTI(config, top_dir=prep_dir.resolve())
-            submit_jobs(tasks, config['slurm_env'], submit=submit, ngroup=ngroup)
+            tasks = setTI(config, top_dir=prep_dir.resolve(), protocol=config['protocol'], remd=config['remd'])
+            if config['remd']:
+                ngroup = -2
+            submit_jobs(tasks, config['slurm_env'], submit=submit, ngroup=ngroup, n_lambda=len(config['unified']['lambdas']))
             set_tag(tag)
     else:
         logger.info("feprun has already existed. skip through it.")
