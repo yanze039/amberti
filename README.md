@@ -1,5 +1,16 @@
 # Python Package to run Amber TI
 
+## Release Update
+
+### July 31th
+
+* Ligands alignment from SMILES.
+
+### July 24th
+
+* Add supports for H-REMD.
+* Reproduce ACES technique.
+
 ## Example
 
 ### Make topology
