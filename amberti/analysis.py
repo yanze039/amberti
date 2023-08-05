@@ -19,6 +19,7 @@ from alchemlyb.parsing import _init_attrs_dict
 from alchemlyb.parsing.util import anyopen
 from alchemlyb.postprocessors.units import R_kJmol, kJ2kcal
 
+
 k_b = R_kJmol * kJ2kcal
 
 _FP_RE = r"[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?"
@@ -134,7 +135,7 @@ def extract_u_nk(outfile, T):
 
 
 
-def analyze(workpath, output_dir, filename, temp=300, protocol='unified', test=False, suffix=None):
+def analyze(workpath, output_dir, filename, temp=300, protocol='unified', test=True, suffix=None):
     base_dir = Path(workpath)
     output_dir = Path(output_dir)
     if not os.path.exists(output_dir):
@@ -164,10 +165,11 @@ def analyze(workpath, output_dir, filename, temp=300, protocol='unified', test=F
             
             for lmd in lmd_lists:
                 print(lmd)
-                data2 = extract_u_nk(lmd.joinpath(filename), T=temp)
+                # data2 = extract_u_nk(lmd.joinpath(filename), T=temp)
+                data2 = alchemlyb.parsing.amber.extract_u_nk(lmd.joinpath(filename), T=temp)
                 # exit(0)
                 # data2[data2<1e5].dropna()
-                decorrelated_u_nk = decorrelate_u_nk(data2, method='all', remove_burnin=True)
+                decorrelated_u_nk = decorrelate_u_nk(data2, method='dE', remove_burnin=True)
                 # data_list.append(data2)
                 data_list.append(decorrelated_u_nk)
             u_nk = alchemlyb.concat(data_list)
