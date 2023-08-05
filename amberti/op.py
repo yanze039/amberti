@@ -14,7 +14,11 @@ def create_simulation_box(
                           protein_forcefield,
                           water='tip3p',
                           size_ligand=15.0, size_complex=12.0,
-                          resize=0.75
+                          resize=0.75,
+                          ligand_cation=12, 
+                          ligand_anion=10,
+                          complex_cation=51, 
+                          complex_anion=50,
     ):
     if water == "tip3p":
         waterbox = "TIP3PBOX"
@@ -43,16 +47,14 @@ def create_simulation_box(
         "complex3 = combine {ligands protein}",
         
         # create ligands in solution for vdw+bonded transformation
-        f"solvatebox ligands TIP3PBOX {size_ligand}",
-        # "addions ligands Na+ 0",
-        "addions ligands Na+ 12 Cl- 10",
+        f"solvatebox ligands {waterbox} {size_ligand} {resize}",
+        f"addionsrand ligands Na+ {ligand_cation} Cl- {ligand_anion}",
         "savepdb ligands ligands_vdw_bonded.pdb",
         "saveamberparm ligands ligands_vdw_bonded.parm7 ligands_vdw_bonded.rst7",
 
         # create complex in solution for vdw+bonded transformation
-        f"solvatebox complex3 TIP3PBOX {size_ligand} ",
-        # "addions complex3 Na+ 0",
-        "addions complex3 Na+ 51 Cl- 50",
+        f"solvatebox complex3 {waterbox} {size_complex} {resize}",
+        f"addionsrand complex3 Na+ {complex_cation} Cl- {complex_anion}",
         "savepdb complex3 complex_vdw_bonded.pdb",
         "saveamberparm complex3 complex_vdw_bonded.parm7 complex_vdw_bonded.rst7",
         "quit"

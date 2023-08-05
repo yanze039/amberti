@@ -146,13 +146,13 @@ def equilibrate_systems(
                 run=True
             )
 
-            logger.info("Pre-Pressurising ...")
+            logger.info("Pre-Pressurising1 ...")
             pressurize(
                 defname="pre_press",
                 prmtop=prmtop, 
                 conf="heat.rst7",
                 ref="heat.rst7",
-                nsteps=1000,
+                nsteps=3000,
                 dt=0.002,
                 temp=config['prep']['temp'],
                 resstraint_wt=config['prep']['pressurize_res']['resstraint_wt'],
@@ -171,12 +171,37 @@ def equilibrate_systems(
                 run=True
             )
 
+            logger.info("Pre-Pressurising2 ...")
+            pressurize(
+                defname="pre_press2",
+                prmtop=prmtop, 
+                conf="pre_press.rst7",
+                ref="pre_press.rst7",
+                nsteps=3000,
+                dt=0.002,
+                temp=config['prep']['temp'],
+                resstraint_wt=config['prep']['pressurize_res']['resstraint_wt'],
+                irest=1, ntx=5,
+                fep=True,
+                clambda=0.5,
+                scalpha=0.5,
+                scbeta=12.0,
+                ifsc=1,
+                timask1=config["prep"]["timask1"],
+                timask2=config["prep"]["timask2"],
+                scmask1=config["prep"]["scmask1"],
+                scmask2=config["prep"]["scmask2"],
+                ofreq=10,
+                fname="pre_press2.in",
+                run=True
+            )
+
             logger.info("Pressurising ...")
             pressurize(
                 defname="pressurize",
                 prmtop=prmtop, 
-                conf="pre_press.rst7",
-                ref="pre_press.rst7",
+                conf="pre_press2.rst7",
+                ref="pre_press2.rst7",
                 nsteps=config["prep"]["pressurize_res"]["nsteps"],
                 dt=0.002,
                 temp=config["prep"]["temp"],
@@ -219,15 +244,19 @@ def prep(ppdb, lpath1, lname1, lpath2, lname2, config):
     concatenate_pdb(lpdb1, lpdb2, llpdb)
     logger.info("Creating the simulation boxes.")
     create_simulation_box(
-                          lib1, lib2, 
-                          frcmod1, frcmod2, 
-                          lpdb1, lpdb2, ppdb, llpdb,
-                          ligand_forcefield,
-                          protein_forcefield,
-                          water='tip3p',
-                          size_ligand=config["ligand_box_size"], 
-                          size_complex=config["complex_box_size"], 
-                          resize=config["resize"]
+                        lib1, lib2, 
+                        frcmod1, frcmod2, 
+                        lpdb1, lpdb2, ppdb, llpdb,
+                        ligand_forcefield,
+                        protein_forcefield,
+                        water='tip3p',
+                        size_ligand=config["ligand_box_size"], 
+                        size_complex=config["complex_box_size"], 
+                        resize=config["resize"],
+                        ligand_cation=config["ligand_cation"],
+                        ligand_anion=config["ligand_anion"],
+                        complex_cation=config["complex_cation"],
+                        complex_anion=config["complex_anion"]
     )
     logger.info("Start equilibrating.")
     equilibrate_systems(config=config, top_dir=cwd)
