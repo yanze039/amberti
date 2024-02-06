@@ -134,8 +134,7 @@ def extract_u_nk(outfile, T):
     return extracted["u_nk"]
 
 
-
-def analyze(workpath, output_dir, filename, temp=300, protocol='unified', test=True, suffix=None):
+def analyze(workpath, output_dir, filename, temp=300, protocol='unified', test=False, suffix=None):
     base_dir = Path(workpath)
     output_dir = Path(output_dir)
     if not os.path.exists(output_dir):
@@ -145,6 +144,8 @@ def analyze(workpath, output_dir, filename, temp=300, protocol='unified', test=T
         tasks = ["unified"]
     elif protocol == 'split':
         tasks = [ "decharge", "vdw_bonded", "recharge"]
+    else:
+        raise ValueError("protocol must be 'unified' or 'split'")
     
     if test:
         systems = ["ligands"]
@@ -164,13 +165,8 @@ def analyze(workpath, output_dir, filename, temp=300, protocol='unified', test=T
             data_list = []
             
             for lmd in lmd_lists:
-                print(lmd)
-                # data2 = extract_u_nk(lmd.joinpath(filename), T=temp)
                 data2 = alchemlyb.parsing.amber.extract_u_nk(lmd.joinpath(filename), T=temp)
-                # exit(0)
-                # data2[data2<1e5].dropna()
                 decorrelated_u_nk = decorrelate_u_nk(data2, method='dE', remove_burnin=True)
-                # data_list.append(data2)
                 data_list.append(decorrelated_u_nk)
             u_nk = alchemlyb.concat(data_list)
             u_nk = u_nk.sort_index(level=u_nk.index.names[1:])
@@ -178,10 +174,12 @@ def analyze(workpath, output_dir, filename, temp=300, protocol='unified', test=T
             mbar = MBAR()
             mbar.fit(u_nk)
             fe = mbar.delta_f_
+            d_fe = mbar.d_delta_f_
             ax2 = plot_mbar_overlap_matrix(mbar.overlap_matrix)
             ax2.figure.savefig(output_dir.joinpath(f'overlap_{cl}_{job}.png'), bbox_inches='tight', pad_inches=0.0)
         
             result[f"{cl}-{job}"] = fe.loc[0.00, 1.00]
+            result[f"{cl}-{job}-error"] = d_fe.loc[0.00, 1.00]
             # R_c, running_average = fwdrev_cumavg_Rc(data_list, tol=2)
             df = forward_backward_convergence(data_list)
             ax = plot_convergence(df)
@@ -195,14 +193,86 @@ def analyze(workpath, output_dir, filename, temp=300, protocol='unified', test=T
     
     if protocol == 'unified':
         ddG = result["complex-unified"] - result["ligands-unified"]
+        d_ddG = np.sqrt(result["complex-unified-error"]**2 + result["ligands-unified-error"]**2)
     elif protocol == 'split':
         ddG = result["complex-vdw_bonded"] + result["complex-recharge"] + result["complex-decharge"] - \
             (result["ligands-vdw_bonded"] + result["ligands-recharge"] + result["ligands-decharge"])
+        d_ddG = np.sqrt(result["complex-vdw_bonded-error"]**2 + result["complex-recharge-error"]**2 + result["complex-decharge-error"]**2 + \
+            result["ligands-vdw_bonded-error"]**2 + result["ligands-recharge-error"]**2 + result["ligands-decharge-error"]**2)
+    else:
+        raise ValueError("protocol must be 'unified' or 'split'")
 
     result["ddG"] = ddG
+    result["ddG-error"] = d_ddG
 
     with open(output_dir.joinpath('result.json'), "w") as fp:
         json.dump(result, fp, indent=4)
     
     return result
+
+
+def decompose(workpath, output_dir, filename, temp=300, protocol='unified', test=False, suffix=None):
+    base_dir = Path(workpath)
+    output_dir = Path(output_dir)
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+    result = {}
+    if protocol == 'unified':
+        tasks = ["unified"]
+    elif protocol == 'split':
+        tasks = [ "decharge", "vdw_bonded", "recharge"]
+    else:
+        raise ValueError("protocol must be 'unified' or 'split'")
     
+    if test:
+        systems = ["ligands"]
+    else:
+        systems = ["ligands", "complex"]
+
+
+    for cl in systems:
+        wkdir = base_dir.joinpath(cl)
+        for job in tasks:
+            if suffix is None:
+                job = f"{job}"
+            else:
+                job = f"{job}.{suffix}"
+            jobdir = wkdir.joinpath(job)
+            lmd_lists = list(jobdir.glob("[0-9]*.*[0-9]"))
+            lmd_lists.sort()
+            data_list = []
+            
+            for lmd in lmd_lists:
+                data2 = alchemlyb.parsing.amber.extract_u_nk(lmd.joinpath(filename), T=temp)
+                decorrelated_u_nk = decorrelate_u_nk(data2, method='dE', remove_burnin=True)
+                data_list.append(decorrelated_u_nk)
+            u_nk = alchemlyb.concat(data_list)
+            u_nk = u_nk.sort_index(level=u_nk.index.names[1:])
+
+            #find max value of entire data frame
+            max_value = np.nanmax(u_nk[u_nk != np.inf])
+
+            #replace inf and -inf in all columns with max value
+            u_nk.replace([np.inf,], max_value*1e3, inplace=True)
+
+            mbar = MBAR()
+            mbar.fit(u_nk)
+            dcomp = mbar._mbar.compute_entropy_and_enthalpy()
+            result[f"{cl}-{job}"] = {
+                "entropy": dcomp["Delta_u"][0][-1],
+                "enthalpy": dcomp["Delta_s"][0][-1],
+                "entropy-error": dcomp["dDelta_u"][0][-1],
+                "enthalpy-error": dcomp["dDelta_s"][0][-1]
+            }
+
+    if test:
+        with open(output_dir.joinpath('result.json'), "w") as fp:
+            json.dump(result, fp, indent=4)
+        return
+    
+    print(result)
+
+    with open(output_dir.joinpath('decomp.json'), "w") as fp:
+        json.dump(result, fp, indent=4)
+    
+    return result

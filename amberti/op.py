@@ -1,10 +1,128 @@
 from amberti.logger import getLogger
 from amberti.amber import tleap
-import os
-import pytraj as pt
 import parmed as pmd
+import pytraj as pt
+from pathlib import Path
+
 
 logger = getLogger()
+
+
+def create_complex_box(
+                        protein,
+                        protein_name,
+                        ligand,
+                        ligand_name,
+                        lib,
+                        frcmod,
+                        protein_forcefield,
+                        ligand_forcefield,
+                        water='tip3p',
+                        box_size=15.0,
+                        ion_num=12
+    ):
+    """Create a simulation box with protein and water."""
+    if not isinstance(protein, Path):
+        protein = Path(protein)
+    else:
+        protein = protein
+    
+    if not isinstance(ligand, Path):
+        ligand = Path(ligand)
+    else:
+        ligand = ligand
+
+    system_name = f"{protein_name}_{ligand_name}"
+    protein = protein.absolute()
+    ligand = ligand.absolute()
+
+    if water == "tip3p":
+        waterbox = "TIP3PBOX"
+        ionparm = "ionsjc_tip3p"
+    else:
+        logger.error("Water box style can only support tip3p. Not implemented.")
+        RuntimeError("Not implemented.")
+    
+    scripts = [
+        f"source leaprc.water.{water}",
+        f"source leaprc.protein.{protein_forcefield}",
+        f"source leaprc.{ligand_forcefield}",
+        f"loadAmberParams frcmod.{ionparm}",
+        f"loadoff {lib}",
+        f"loadamberparams {frcmod}",
+
+        # load the coordinates and create the complex
+        f"protein = loadpdb {protein}",
+        f"ligands = loadMol2 {ligand}",
+        # create proteins in solution
+        "complex = combine { protein ligands }",
+        f"solvatebox complex {waterbox} {box_size}",
+
+        # "addions ligands Na+ 0",
+        "addionsrand complex Na+ 0",
+        "addionsrand complex Cl- 0",
+        f"addionsrand complex Na+ {ion_num}",
+        f"addionsrand complex Cl- {ion_num}",
+        f"savepdb complex {system_name}.tleap.pdb",
+        f"saveamberparm complex {system_name}.tleap.parm7 {system_name}.tleap.rst7",
+        "quit"
+        
+        ]
+    fname = f"tleap.{system_name}.in"
+    tleap("\n".join(scripts), fname=fname)
+
+
+def create_ligand_box(
+                        ligand,
+                        ligand_name,
+                        lib,
+                        frcmod,
+                        ligand_forcefield,
+                        water='tip3p',
+                        box_size=15.0,
+                        ion_num=12
+            ):
+    """Create a simulation box with protein and water."""
+    
+    if not isinstance(ligand, Path):
+        ligand = Path(ligand)
+    else:
+        ligand = ligand
+
+    system_name = ligand_name
+    ligand = ligand.absolute()
+
+    if water == "tip3p":
+        waterbox = "TIP3PBOX"
+        ionparm = "ionsjc_tip3p"
+    else:
+        logger.error("Water box style can only support tip3p. Not implemented.")
+        RuntimeError("Not implemented.")
+    
+    scripts = [
+        f"source leaprc.water.{water}",
+        f"source leaprc.{ligand_forcefield}",
+        f"loadAmberParams frcmod.{ionparm}",
+        f"loadoff {lib}",
+        f"loadamberparams {frcmod}",
+
+        # load the coordinates and create the complex
+        f"ligands = loadMol2 {ligand}",
+        # create proteins in solution
+        f"solvatebox ligands {waterbox} {box_size}",
+
+        # "addions ligands Na+ 0",
+        "addionsrand ligands Na+ 0",
+        "addionsrand ligands Cl- 0",
+        f"addionsrand ligands Na+ {ion_num}",
+        f"addionsrand ligands Cl- {ion_num}",
+        f"savepdb ligands {system_name}.tleap.pdb",
+        f"saveamberparm ligands {system_name}.tleap.parm7 {system_name}.tleap.rst7",
+        "quit"
+        ]
+    fname = f"tleap.{system_name}.in"
+    tleap("\n".join(scripts), fname=fname)
+
 
 def create_simulation_box(
                           lib1, lib2, 
@@ -145,4 +263,12 @@ def extract_conf(rst7, prmtop, out, select, overwrite=False):
     traj = pt.iterload(rst7, prmtop)
     pt.write_traj(out, traj[str(select)], overwrite=overwrite)
 
-    
+
+def get_atom_name_from_atom_idx(mol2file, atom_idx):
+    if isinstance(atom_idx, int):
+        atom_idx = [atom_idx]
+    mol2 = pmd.load_file(str(mol2file))
+    atom_names = []
+    for atom in atom_idx:
+        atom_names.append(mol2[atom].name)
+    return atom_names

@@ -42,7 +42,7 @@ def em(
         script += [
             f"icfe = 1, clambda = {clambda}, scalpha = {scalpha}, scbeta = {scbeta},",
             "logdvdl = 0,",
-            f"timask1 = '{timask1}', timask2 = '{timask2}',",
+            f'timask1 = "{timask1}", timask2 = "{timask2}",',
             f"ifsc = {ifsc},"
         ]
         if crgmask is not None:
@@ -52,7 +52,7 @@ def em(
             "is activated, however, scmask1 is not assigned."
             assert scmask2 is not None, "you are setting ifsc=1 indicates that soft core" \
             "is activated, however, scmask2 is not assigned."
-            script.append(f"scmask1 = '{scmask1}', scmask2 = '{scmask2}',")
+            script.append(f'scmask1 = "{scmask1}", scmask2 = "{scmask2}",')
             if aces == 1:
                 assert aces_setting is not None, "you are setting aces=1 indicates that ACES is a dict."
                 for key, value in aces_setting.items():
@@ -80,7 +80,7 @@ def heat(
         conf,
         ref,
         nsteps=10000,
-        dt=0.002,
+        dt=0.0005,
         temp=300,
         resstraint_wt=5.00,
         irest=0, ntx=1,
@@ -120,7 +120,7 @@ def heat(
         script += [
             f"icfe = 1, clambda = {clambda}, scalpha = {scalpha}, scbeta = {scbeta},",
             "logdvdl = 0,",
-            f"timask1 = '{timask1}', timask2 = '{timask2}',",
+            f'timask1 = "{timask1}", timask2 = "{timask2}",',
             f"ifsc = {ifsc},"
         ]
         if crgmask is not None:
@@ -130,7 +130,7 @@ def heat(
             "is activated, however, scmask1 is not assigned."
             assert scmask2 is not None, "you are setting ifsc=1 indicates that soft core" \
             "is activated, however, scmask2 is not assigned."
-            script.append(f"scmask1 = '{scmask1}', scmask2 = '{scmask2}',")
+            script.append(f'scmask1 = "{scmask1}", scmask2 = "{scmask2}",')
             if aces == 1:
                 assert aces_setting is not None, "you are setting aces=1 indicates that ACES is a dict."
                 for key, value in aces_setting.items():
@@ -208,7 +208,7 @@ def pressurize(
         script += [
             f"icfe = 1, clambda = {clambda}, scalpha = {scalpha}, scbeta = {scbeta},",
             "logdvdl = 0,",
-            f"timask1 = '{timask1}', timask2 = '{timask2}',",
+            f'timask1 = "{timask1}", timask2 = "{timask2}",',
             f"ifsc = {ifsc},"
         ]
         if crgmask is not None:
@@ -218,7 +218,7 @@ def pressurize(
             "is activated, however, scmask1 is not assigned."
             assert scmask2 is not None, "you are setting ifsc=1 indicates that soft core" \
             "is activated, however, scmask2 is not assigned."
-            script.append(f"scmask1 = '{scmask1}', scmask2 = '{scmask2}',")
+            script.append(f'scmask1 = "{scmask1}", scmask2 = "{scmask2}",')
             if aces == 1:
                 assert aces_setting is not None, "you are setting aces=1 indicates that ACES is a dict."
                 for key, value in aces_setting.items():
@@ -318,6 +318,7 @@ def equilibrium(
         prmtop=prmtop, 
         conf="min2.rst7",
         ref="min2.rst7",
+        dt=0.0005,
         nsteps=nsteps_heat,
         temp=temp,
         resstraint_wt=resstraint_wt,
@@ -480,7 +481,7 @@ def production(
         script += [
             f"icfe = 1, clambda = {clambda},",
             "logdvdl = 0,",
-            f"timask1 = '{timask1}', timask2 = '{timask2}',",
+            f'timask1 = "{timask1}", timask2 = "{timask2}",',
             f"ifsc = {ifsc}, ifmbar = {ifmbar},"
         ]
         if crgmask is not None:
@@ -490,7 +491,7 @@ def production(
             "is activated, however, scmask1 is not assigned."
             assert scmask2 is not None, "you are setting ifsc=1 indicates that soft core" \
             "is activated, however, scmask2 is not assigned."
-            script.append(f"scmask1 = '{scmask1}', scmask2 = '{scmask2}',")
+            script.append(f'scmask1 = "{scmask1}", scmask2 = "{scmask2}",')
             if aces == 1:
                 assert aces_setting is not None, "you are setting aces=1 indicates that ACES is a dict."
                 for key, value in aces_setting.items():

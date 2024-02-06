@@ -6,7 +6,11 @@ from rdkit.Chem import rdMolAlign
 from rdkit.Chem.rdForceFieldHelpers import UFFGetMoleculeForceField
 # BUG: only when this import exists, UFFGetMoleculeForceField can be registered.
 from rdkit.Chem import ChemicalForceFields
+import warnings
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 print("RDKit Version: ", rdkit.__version__)
 
@@ -75,9 +79,9 @@ def find_common_core(target,
             continue
         chiral_t = chiral_target[atom_pair[0]]
         chiral_q = chiral_query[atom_pair[1]]
-        assert chiral_t == chiral_q, f"Atom target@{atom_pair[0]}:{chiral_t} and "\
-                       f"query@{atom_pair[1]}:{chiral_q} have different chiral tags."
-        
+        if chiral_t != chiral_q:
+            warnings.warn(f"Atom target@{atom_pair[0]}:{chiral_t} and "\
+                       f"query@{atom_pair[1]}:{chiral_q} have different chiral tags.")        
     return mcs_atom_mapping
 
     
@@ -145,7 +149,7 @@ def PositionRestrainedEnergyMinimization(mol, atom_list, force_constant=100., ma
     return mol
 
 
-def alignHs(target, query, atom_mapping, dist_tol = 1.0, debug = False):
+def alignHs(target, query, atom_mapping, dist_tol = 1.0, debug = True):
     conf_target = target.GetConformer()
     conf_query = query.GetConformer()
     assert query.GetNumConformers(), "No conformers are found in query molecule."
@@ -207,48 +211,49 @@ def alignHs(target, query, atom_mapping, dist_tol = 1.0, debug = False):
                 # an artifacial mapping, cause we force the order of H's of target as query.
                 hydrogen_mapping.append((neighbor_H_target[ii], neighbor_H_query[ii]))
         
+        elif targetNumHs < queryNumHs:
+            # this indicates that one Hydrogen atom in query mol is changed to other group.
+            print("Target has less H's than query @", hyv_atom_target_idx)
+            # assert queryNumHs - targetNumHs <= 1, \
+            #         "multiple hydrogen atoms are alchemically changed, but this is not encouraged."
+            # we assign the pos from the closest atoms.
+            for ii in range(targetNumHs):
+                distance = []
+                for jj in range(len(neighbor_H_query)):
+                    dist_i_j = calc_dist(
+                                        conf_target.GetAtomPosition(neighbor_H_target[ii]),
+                                        conf_query.GetAtomPosition(neighbor_H_query[jj]),
+                                        offset=displacement
+                                        )
+                    distance.append((neighbor_H_query[jj], dist_i_j))
+                distance = sorted(distance, key=lambda x: x[1])
+                conf_target.SetAtomPosition(neighbor_H_target[ii],
+                                            conf_query.GetAtomPosition(distance[0][0]))
+                neighbor_H_query = [x[0] for x in distance[1:]]
+                hydrogen_mapping.append((neighbor_H_target[ii], distance[0][0]))
+            
         else:
-            if targetNumHs < queryNumHs:
-                # this indicates that one Hydrogen atom in query mol is changed to other group.
-                assert queryNumHs - targetNumHs <= 1, \
-                        "multiple hydrogen atoms are alchemically changed, but this is not encouraged."
-                # we assign the pos from the closest atoms.
-                for ii in range(targetNumHs):
-                    distance = []
-                    for jj in range(len(neighbor_H_query)):
-                        dist_i_j = calc_dist(
-                                            conf_target.GetAtomPosition(neighbor_H_target[ii]),
-                                            conf_query.GetAtomPosition(neighbor_H_query[jj]),
-                                            offset=displacement
-                                            )
-                        distance.apppend((jj, dist_i_j))
-                    distance = sorted(distance, key=lambda x: x[1])
-                    conf_target.SetAtomPosition(neighbor_H_target[ii],
-                                                conf_query.GetAtomPosition(distance[0][0]))
-                    neighbor_H_query = [x[0] for x in distance[1:]]
-                    hydrogen_mapping.append((neighbor_H_target[ii], distance[0][0]))
-                
-            else:
-                # target > query
-                # this indicates that one group in query is changed to Hydrogen. we need to find the closest 
-                # H's in target for the H's in querys. and assign those remaining H's in query.
-                assert targetNumHs - queryNumHs <= 1, \
-                        "multiple hydrogen atoms are alchemically changed, but this is not encouraged."
-                # we assign the pos from the closest atoms.
-                for ii in range(queryNumHs):
-                    distance = []
-                    for jj in range(len(neighbor_H_target)):
-                        dist_i_j = calc_dist(
-                                            conf_target.GetAtomPosition(neighbor_H_target[jj]),
-                                            conf_query.GetAtomPosition(neighbor_H_query[ii]),
-                                            offset=displacement
-                                            )
-                        distance.apppend((jj, dist_i_j))
-                    distance = sorted(distance, key=lambda x: x[1])
-                    conf_target.SetAtomPosition(distance[0][0],
-                                                conf_query.GetAtomPosition(neighbor_H_query[ii]))
-                    neighbor_H_query = [x[0] for x in distance[1:]]
-                    hydrogen_mapping.append((distance[0][0], neighbor_H_query[ii]))
+            print("Target has more H's than query @", hyv_atom_target_idx)
+            # target > query
+            # this indicates that one group in query is changed to Hydrogen. we need to find the closest 
+            # H's in target for the H's in querys. and assign those remaining H's in query.
+            assert targetNumHs - queryNumHs <= 1, \
+                    "multiple hydrogen atoms are alchemically changed, but this is not encouraged."
+            # we assign the pos from the closest atoms.
+            for ii in range(queryNumHs):
+                distance = []
+                for jj in range(len(neighbor_H_target)):
+                    dist_i_j = calc_dist(
+                                        conf_target.GetAtomPosition(neighbor_H_target[jj]),
+                                        conf_query.GetAtomPosition(neighbor_H_query[ii]),
+                                        offset=displacement
+                                        )
+                    distance.apppend((neighbor_H_target[jj], dist_i_j))
+                distance = sorted(distance, key=lambda x: x[1])
+                conf_target.SetAtomPosition(distance[0][0],
+                                            conf_query.GetAtomPosition(neighbor_H_query[ii]))
+                neighbor_H_query = [x[0] for x in distance[1:]]
+                hydrogen_mapping.append((distance[0][0], neighbor_H_query[ii]))
 
     return target, hydrogen_mapping
 
@@ -280,24 +285,35 @@ def check_formal_charge(target, query, atom_mapping):
     target_common_core = [x[0] for x in atom_mapping]
     target_unique_atom = [x for x in range(target.GetNumAtoms()) if x not in target_common_core]
 
-    for atom_idx in target_unique_atom:
-        charge_i = target.GetAtomWithIdx(atom_idx).GetFormalCharge()
-        assert charge_i == 0, (f"Target Unique Atom@{atom_idx} has formal charge {charge_i}, you are changing the charges!!")
+    # for atom_idx in target_unique_atom:
+    #     charge_i = target.GetAtomWithIdx(atom_idx).GetFormalCharge()
+    #     assert charge_i == 0, (f"Target Unique Atom@{atom_idx} has formal charge {charge_i}, you are changing the charges!!")
 
 
-def ConstrainedConfGeneration(target, query, randomseed=-1):
+def ConstrainedConfGeneration(target, query, randomseed=-1, charge_check=False, hydrogen_check=False):
+    logger.info("Finding the common cores between target and query ...")
     mcs_atom_mapping = find_common_core(target, query)
     
-    check_formal_charge(target, query, mcs_atom_mapping)
+    if charge_check:
+        check_formal_charge(target, query, mcs_atom_mapping)
     target = Chem.AddHs(target)
+    logger.info("RDkit Constrained Embedding ...")
     target_embed = ConstrainedEmbed(target, query, mcs_atom_mapping, randomseed=randomseed)
     # target_embed_without_H = Chem.RemoveHs(target_embed)
+    if not hydrogen_check:
+        return target_embed, [], []
+    logger.info("dealing with hydrogens ...")
     target_embed_H, Hmap = alignHs(target_embed, query, mcs_atom_mapping, dist_tol = 1.0, debug = False)
     mcs_atom_mapping_with_H = mcs_atom_mapping + Hmap
     target_embed_H = PositionRestrainedEnergyMinimization(target_embed_H, 
                                                           [x[0] for x in mcs_atom_mapping_with_H], 
                                                           force_constant=1000.)
-    return target_embed_H
+    target_common_core = [x[0] for x in mcs_atom_mapping_with_H]
+    unique_atom_target = [x for x in range(target_embed_H.GetNumAtoms()) if x not in target_common_core]
+    query_common_core = [x[1] for x in mcs_atom_mapping_with_H]
+    unique_atom_query = [x for x in range(query.GetNumAtoms()) if x not in query_common_core]
+
+    return target_embed_H, unique_atom_target, unique_atom_query
 
 
 if __name__ == "__main__":
@@ -307,12 +323,23 @@ if __name__ == "__main__":
     parser.add_argument("--fquery", type=str, default="embed.query.sdf")
     parser.add_argument("--output", type=str, default="embed.target.sdf")
     parser.add_argument("--randomseed", type=int, default=-1)
+    parser.add_argument("--hydrogen-check", action="store_true")
+    parser.add_argument("--charge-check", action="store_true")
     args = parser.parse_args()
-    with open(args.ftarget, "r") as f:
-        target_SMILES = f.read()
-    target = Chem.MolFromSmiles(target_SMILES)
+    
+
+
+    if args.ftarget.endswith(".sdf"):
+        target = Chem.SDMolSupplier(args.ftarget, removeHs=True)[0]
+        # target_SMILES = Chem.MolToSmiles(target)
+    else:
+        with open(args.ftarget, "r") as f:
+            target_SMILES = f.read()
+        target = Chem.MolFromSmiles(target_SMILES)
     query = Chem.SDMolSupplier(args.fquery, removeHs=False)[0]
-    target_embed_H = ConstrainedConfGeneration(target, query, args.randomseed)
+    target_embed_H, unique_atom_target, unique_atom_query = ConstrainedConfGeneration(
+        target, query, args.randomseed, charge_check=args.charge_check, hydrogen_check=args.hydrogen_check
+    )
 
     writer = Chem.SDWriter(args.output)
     writer.write(target_embed_H, confId=0)

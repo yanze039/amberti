@@ -17,26 +17,412 @@ from amberti.op import (
 logger = getLogger()
 
 
+def equilibrate_system(
+        config,
+        prmtop,
+        rst7,   
+        workdir
+    ):
+    """Equilibrate the system. not for FEP run"""
+    prmtop = Path(prmtop).resolve()
+    rst7 = Path(rst7).resolve()
+    workdir = Path(workdir)
+    
+    tasks = {}
+    tasks["path"] = str(workdir.resolve())
+    tasks["command"] = []
+
+    with set_directory(workdir):
+        logger.info("Pre-heating ...")
+        tasks["command"].append(
+            heat(
+                defname="debug",
+                prmtop=prmtop, 
+                conf=rst7,
+                ref=rst7,
+                nsteps=5,
+                dt=0.00001,
+                temp=5.0,
+                resstraint_wt=config["heat"]["resstraint_wt"],
+                fep=False,
+                tempi=4.0,
+                ofreq=1,
+                fname="debug.in",
+                run=False
+            )
+        )
+        tasks["command"].append(
+            em(
+                "min",
+                prmtop=prmtop, 
+                conf="debug.rst7",
+                ref="debug.rst7",
+                maxcyc=config["em"]["maxcyc"],
+                resstraint_wt=config["em"]["resstraint_wt"],
+                fep=False,
+                fname="min.in",
+                run=False
+            ))
+        
+        logger.info("Pre-heating ...")
+        tasks["command"].append(
+            
+            heat(
+                defname="pre_heating",
+                prmtop=prmtop, 
+                conf="min.rst7",
+                ref="min.rst7",
+                nsteps=20,
+                dt=0.0002,
+                temp=5.0,
+                resstraint_wt=config["heat"]["resstraint_wt"],
+                fep=False,
+                tempi=4.0,
+                ofreq=1,
+                fname="pre_heat.in",
+                run=False
+            ))
+        logger.info("Second Emergy minimizing ...")
+        tasks["command"].append(
+            
+            em(
+                "min2",
+                prmtop=prmtop,
+                conf="pre_heating.rst7",
+                ref="pre_heating.rst7",
+                maxcyc=config["em"]["maxcyc"],
+                resstraint_wt=config["em"]["resstraint_wt"],
+                fep=False,
+                fname="min2.in",
+                run=False
+            ))
+
+        logger.info(f"Heating from 5K to {config['temp']}K ...")
+        tasks["command"].append(
+            heat(
+                defname="heat",
+                prmtop=prmtop, 
+                conf="min2.rst7",
+                ref="min2.rst7",
+                nsteps=config["heat"]["nsteps"],
+                temp=config['temp'],
+                resstraint_wt=config["heat"]["resstraint_wt"],
+                fep=False,
+                ofreq=config["heat"]["ofreq"],
+                fname="heat.in",
+                run=False
+            ))
+
+        logger.info("Pre-Pressurising1 ...")
+        tasks["command"].append(
+            pressurize(
+                defname="pre_press",
+                prmtop=prmtop, 
+                conf="heat.rst7",
+                ref="heat.rst7",
+                nsteps=3000,
+                dt=0.002,
+                temp=config['temp'],
+                resstraint_wt=config['pressurize_res']['resstraint_wt'],
+                irest=1, ntx=5,
+                fep=False,
+                ofreq=10,
+                fname="pre_press.in",
+                run=False
+            ))
+
+        logger.info("Pre-Pressurising2 ...")
+        tasks["command"].append(
+            pressurize(
+                defname="pre_press2",
+                prmtop=prmtop, 
+                conf="pre_press.rst7",
+                ref="pre_press.rst7",
+                nsteps=3000,
+                dt=0.002,
+                temp=config['temp'],
+                resstraint_wt=config['pressurize_res']['resstraint_wt'],
+                irest=1, ntx=5,
+                fep=False,
+                ofreq=10,
+                fname="pre_press2.in",
+                run=False
+            ))
+
+        logger.info("Pressurising ...")
+        tasks["command"].append(
+            pressurize(
+                defname="pressurize_res",
+                prmtop=prmtop, 
+                conf="pre_press2.rst7",
+                ref="pre_press2.rst7",
+                nsteps=config["pressurize_res"]["nsteps"],
+                dt=0.002,
+                temp=config["temp"],
+                resstraint_wt=config["pressurize_res"]["resstraint_wt"],
+                irest=1, ntx=5,
+                fep=False,
+                ofreq=config["pressurize_res"]["ofreq"],
+                fname="pressurize_res.in",
+                run=False
+            ))
+        
+        logger.info("Pressurising ...")
+        tasks["command"].append(
+            pressurize(
+                defname="pressurize",
+                prmtop=prmtop, 
+                conf="pressurize_res.rst7",
+                ref="pressurize_res.rst7",
+                nsteps=config["pressurize"]["nsteps"],
+                dt=0.002,
+                temp=config["temp"],
+                resstraint_wt=None,
+                irest=1, ntx=5,
+                fep=False,
+                ofreq=config["pressurize"]["ofreq"],
+                fname="pressurize.in",
+                run=False
+            ))
+
+        with open("run.sh", "w") as fp:
+            fp.write("\n".join(tasks["command"]))
+            fp.write("\n")
+            fp.write("touch done.tag")
+            fp.write("\n")
+    return tasks
+
+
+
+def _equilibrate_system(
+        config,
+        prmtop,
+        rst7,   
+        workdir
+    ):
+    
+    prmtop = Path(prmtop).resolve()
+    rst7 = Path(rst7).resolve()
+    workdir = Path(workdir)
+    with set_directory(workdir):
+        logger.info("Pre-heating ...")
+        # just for debug
+        heat(
+            defname="debug",
+            prmtop=prmtop, 
+            conf=rst7,
+            ref=rst7,
+            nsteps=5,
+            dt=0.00001,
+            temp=5.0,
+            resstraint_wt=config["prep"]["heat"]["resstraint_wt"],
+            fep=True,
+            clambda=0.5,
+            scalpha=0.5,
+            scbeta=12.0,
+            ifsc=1,
+            timask1=config["prep"]["timask1"],
+            timask2=config["prep"]["timask2"],
+            scmask1=config["prep"]["scmask1"],
+            scmask2=config["prep"]["scmask2"],
+            tempi=4.0,
+            ofreq=1,
+            fname="debug.in",
+            run=True
+        )
+
+        em(
+            "min",
+            prmtop=prmtop, 
+            conf="debug.rst7",
+            ref="debug.rst7",
+            maxcyc=config["prep"]["em"]["maxcyc"],
+            resstraint_wt=config["prep"]["em"]["resstraint_wt"],
+            fep=True,
+            clambda=0.5,
+            scalpha=0.5,
+            scbeta=12.0,
+            ifsc=1,
+            timask1=config["prep"]["timask1"],
+            timask2=config["prep"]["timask2"],
+            scmask1=config["prep"]["scmask1"],
+            scmask2=config["prep"]["scmask2"],
+            fname="min.in",
+            run=True
+        )
+
+        logger.info("Pre-heating ...")
+        heat(
+            defname="pre_heating",
+            prmtop=prmtop, 
+            conf="min.rst7",
+            ref="min.rst7",
+            nsteps=20,
+            dt=0.0002,
+            temp=5.0,
+            resstraint_wt=config["prep"]["heat"]["resstraint_wt"],
+            fep=True,
+            clambda=0.5,
+            scalpha=0.5,
+            scbeta=12.0,
+            ifsc=1,
+            timask1=config["prep"]["timask1"],
+            timask2=config["prep"]["timask2"],
+            scmask1=config["prep"]["scmask1"],
+            scmask2=config["prep"]["scmask2"],
+            tempi=4.0,
+            ofreq=1,
+            fname="pre_heat.in",
+            run=True
+        )
+
+        logger.info("Second Emergy minimizing ...")
+        em(
+            "min2",
+            prmtop=prmtop,
+            conf="pre_heating.rst7",
+            ref="pre_heating.rst7",
+            maxcyc=config["prep"]["em"]["maxcyc"],
+            resstraint_wt=config["prep"]["em"]["resstraint_wt"],
+            fep=True,
+            clambda=0.5,
+            scalpha=0.5,
+            scbeta=12.0,
+            ifsc=1,
+            timask1=config["prep"]["timask1"],
+            timask2=config["prep"]["timask2"],
+            scmask1=config["prep"]["scmask1"],
+            scmask2=config["prep"]["scmask2"],
+            fname="min2.in",
+            run=True
+        )
+
+        logger.info(f"Heating from 5K to {config['prep']['temp']}K ...")
+        heat(
+            defname="heat",
+            prmtop=prmtop, 
+            conf="min2.rst7",
+            ref="min2.rst7",
+            nsteps=config["prep"]["heat"]["nsteps"],
+            temp=config['prep']['temp'],
+            resstraint_wt=config["prep"]["heat"]["resstraint_wt"],
+            fep=True,
+            clambda=0.5,
+            scalpha=0.5,
+            scbeta=12.0,
+            ifsc=1,
+            timask1=config["prep"]["timask1"],
+            timask2=config["prep"]["timask2"],
+            scmask1=config["prep"]["scmask1"],
+            scmask2=config["prep"]["scmask2"],
+            tempi=5.0,
+            ofreq=config["prep"]["heat"]["ofreq"],
+            fname="heat.in",
+            run=True
+        )
+
+        logger.info("Pre-Pressurising1 ...")
+        pressurize(
+            defname="pre_press",
+            prmtop=prmtop, 
+            conf="heat.rst7",
+            ref="heat.rst7",
+            nsteps=3000,
+            dt=0.002,
+            temp=config['prep']['temp'],
+            resstraint_wt=config['prep']['pressurize_res']['resstraint_wt'],
+            irest=1, ntx=5,
+            fep=True,
+            clambda=0.5,
+            scalpha=0.5,
+            scbeta=12.0,
+            ifsc=1,
+            timask1=config["prep"]["timask1"],
+            timask2=config["prep"]["timask2"],
+            scmask1=config["prep"]["scmask1"],
+            scmask2=config["prep"]["scmask2"],
+            ofreq=10,
+            fname="pre_press.in",
+            run=True
+        )
+
+        logger.info("Pre-Pressurising2 ...")
+        pressurize(
+            defname="pre_press2",
+            prmtop=prmtop, 
+            conf="pre_press.rst7",
+            ref="pre_press.rst7",
+            nsteps=3000,
+            dt=0.002,
+            temp=config['prep']['temp'],
+            resstraint_wt=config['prep']['pressurize_res']['resstraint_wt'],
+            irest=1, ntx=5,
+            fep=True,
+            clambda=0.5,
+            scalpha=0.5,
+            scbeta=12.0,
+            ifsc=1,
+            timask1=config["prep"]["timask1"],
+            timask2=config["prep"]["timask2"],
+            scmask1=config["prep"]["scmask1"],
+            scmask2=config["prep"]["scmask2"],
+            ofreq=10,
+            fname="pre_press2.in",
+            run=True
+        )
+
+        logger.info("Pressurising ...")
+        pressurize(
+            defname="pressurize",
+            prmtop=prmtop, 
+            conf="pre_press2.rst7",
+            ref="pre_press2.rst7",
+            nsteps=config["prep"]["pressurize_res"]["nsteps"],
+            dt=0.002,
+            temp=config["prep"]["temp"],
+            resstraint_wt=config["prep"]["pressurize_res"]["resstraint_wt"],
+            irest=1, ntx=5,
+            fep=True,
+            clambda=0.5,
+            scalpha=0.5,
+            scbeta=12.0,
+            ifsc=1,
+            timask1=config["prep"]["timask1"],
+            timask2=config["prep"]["timask2"],
+            scmask1=config["prep"]["scmask1"],
+            scmask2=config["prep"]["scmask2"],
+            ofreq=config["prep"]["pressurize_res"]["ofreq"],
+            fname="pressurize.in",
+            run=True
+        )
+        logger.info("Pressurising ...")
+    return
+
+
 def equilibrate_systems(
         config,
-        top_dir   
+        top_dir,
+        suffix = "_vdw_bonded"
     ):
+    """Equilibrate the system. both for ligand leg and complex leg
+       Before production fep run, we will equilibrate system for 5ns.
+    """
     systems = ["ligands", "complex"]
-
+    top_dir = Path(Path(top_dir).resolve())
     cwd = Path(os.getcwd())
     for system in systems:
         system_dir = cwd.joinpath(system)
         if not os.path.exists(system_dir):
             os.mkdir(system_dir)
-        prmtop = top_dir.joinpath(f"{system}_vdw_bonded.parm7")
+        prmtop = (top_dir/(f"{system}{suffix}.parm7")).resolve()
         with set_directory(system_dir):
             logger.info("Pre-heating ...")
             # just for debug
             heat(
                 defname="debug",
                 prmtop=prmtop, 
-                conf=top_dir.joinpath(f"{system}_vdw_bonded.rst7"),
-                ref=top_dir.joinpath(f"{system}_vdw_bonded.rst7"),
+                conf=(top_dir/(f"{system}{suffix}.rst7")).resolve(),
+                ref=(top_dir/(f"{system}{suffix}.rst7")).resolve(),
                 nsteps=5,
                 dt=0.00001,
                 temp=5.0,
@@ -198,7 +584,7 @@ def equilibrate_systems(
 
             logger.info("Pressurising ...")
             pressurize(
-                defname="pressurize",
+                defname="pressurize_res",
                 prmtop=prmtop, 
                 conf="pre_press2.rst7",
                 ref="pre_press2.rst7",
@@ -217,11 +603,35 @@ def equilibrate_systems(
                 scmask1=config["prep"]["scmask1"],
                 scmask2=config["prep"]["scmask2"],
                 ofreq=config["prep"]["pressurize_res"]["ofreq"],
+                fname="pressurize_res.in",
+                run=True
+            )
+            logger.info("Pressurising ...")
+
+            logger.info("Pressurising ...")
+            pressurize(
+                defname="pressurize",
+                prmtop=prmtop, 
+                conf="pressurize_res.rst7",
+                ref="pressurize_res.rst7",
+                nsteps=config["prep"]["pressurize"]["nsteps"],
+                dt=0.002,
+                temp=config["prep"]["temp"],
+                resstraint_wt=None,
+                irest=1, ntx=5,
+                fep=True,
+                clambda=0.5,
+                scalpha=0.5,
+                scbeta=12.0,
+                ifsc=1,
+                timask1=config["prep"]["timask1"],
+                timask2=config["prep"]["timask2"],
+                scmask1=config["prep"]["scmask1"],
+                scmask2=config["prep"]["scmask2"],
+                ofreq=config["prep"]["pressurize"]["ofreq"],
                 fname="pressurize.in",
                 run=True
             )
-
-            logger.info("Pressurising ...")
     return
 
 
@@ -304,7 +714,7 @@ def setTI(
     elif protocol == "unified":
         steps = ["unified"]
 
-    top_dir = Path(top_dir)
+    top_dir = Path(Path(top_dir).resolve())
     tasks = {}
     
     cwd = Path(os.getcwd())
@@ -322,7 +732,7 @@ def setTI(
                 lmb_dir = step_dir.joinpath(str(lmb))
                 if not os.path.exists(lmb_dir):
                     os.mkdir(lmb_dir)
-                prmtop = top_dir.joinpath(f"{system}_{step}.parm7")
+                prmtop = (top_dir/(f"{system}_{step}.parm7")).resolve()
                 tasks[f"{system}_{step}_{lmb}"] = {}
                 tasks[f"{system}_{step}_{lmb}"]["path"] = str(lmb_dir.resolve())
                 tasks[f"{system}_{step}_{lmb}"]["command"] = []
@@ -333,8 +743,8 @@ def setTI(
                     tasks[f"{system}_{step}_{lmb}"]["command"].append(heat(
                         defname="debug",
                         prmtop=prmtop, 
-                        conf=top_dir.joinpath(f"{system}_{step}.rst7"),
-                        ref=top_dir.joinpath(f"{system}_{step}.rst7"),
+                        conf=(top_dir/(f"{system}_{step}.rst7")).resolve(),
+                        ref=(top_dir/(f"{system}_{step}.rst7")).resolve(),
                         nsteps=5,
                         dt=0.00005,
                         temp=5.0,
