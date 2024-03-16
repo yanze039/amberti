@@ -40,7 +40,7 @@ def em(
     ]
     if fep:
         script += [
-            f"icfe = 1, clambda = {clambda}, scalpha = {scalpha}, scbeta = {scbeta},",
+            f"icfe = 1, clambda = {clambda},",
             "logdvdl = 0,",
             f'timask1 = "{timask1}", timask2 = "{timask2}",',
             f"ifsc = {ifsc},"
@@ -118,7 +118,7 @@ def heat(
 
     if fep:
         script += [
-            f"icfe = 1, clambda = {clambda}, scalpha = {scalpha}, scbeta = {scbeta},",
+            f"icfe = 1, clambda = {clambda},",
             "logdvdl = 0,",
             f'timask1 = "{timask1}", timask2 = "{timask2}",',
             f"ifsc = {ifsc},"
@@ -206,7 +206,7 @@ def pressurize(
 
     if fep:
         script += [
-            f"icfe = 1, clambda = {clambda}, scalpha = {scalpha}, scbeta = {scbeta},",
+            f"icfe = 1, clambda = {clambda},",
             "logdvdl = 0,",
             f'timask1 = "{timask1}", timask2 = "{timask2}",',
             f"ifsc = {ifsc},"
