@@ -100,6 +100,7 @@ def heat(
         ofreq=1000,
         fname="heat.in",
         run=True,
+        cuda=True,
     ):
     
     script = [
@@ -155,7 +156,7 @@ def heat(
         fp.write("\n".join(script))
         fp.write("\n")
     
-    return_code = pmemd(defname, fname, prmtop, conf, outtraj=True, ref=ref, cuda=True, mpi=False, run=run)
+    return_code = pmemd(defname, fname, prmtop, conf, outtraj=True, ref=ref, cuda=cuda, mpi=False, run=run)
     return return_code
 
 
@@ -183,7 +184,8 @@ def pressurize(
         scmask2=None,
         ofreq=1000,
         fname="press.in",
-        run=True
+        run=True,
+        cuda=True,
     ):
 
     script = [
@@ -236,7 +238,7 @@ def pressurize(
         fp.write("\n".join(script))
         fp.write("\n")
     
-    return_code = pmemd(defname, fname, prmtop, conf, outtraj=True, ref=ref, cuda=True, mpi=False, run=run)
+    return_code = pmemd(defname, fname, prmtop, conf, outtraj=True, ref=ref, cuda=cuda, mpi=False, run=run)
     return return_code
 
 

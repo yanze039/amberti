@@ -48,7 +48,8 @@ def equilibrate_system(
                 tempi=4.0,
                 ofreq=1,
                 fname="debug.in",
-                run=False
+                run=False,
+                cuda=False
             )
         )
         tasks["command"].append(
@@ -80,7 +81,8 @@ def equilibrate_system(
                 tempi=4.0,
                 ofreq=1,
                 fname="pre_heat.in",
-                run=False
+                run=False,
+                cuda=False
             ))
         logger.info("Second Emergy minimizing ...")
         tasks["command"].append(
@@ -128,7 +130,8 @@ def equilibrate_system(
                 fep=False,
                 ofreq=10,
                 fname="pre_press.in",
-                run=False
+                run=False,
+                cuda=False
             ))
 
         logger.info("Pre-Pressurising2 ...")
@@ -146,7 +149,8 @@ def equilibrate_system(
                 fep=False,
                 ofreq=10,
                 fname="pre_press2.in",
-                run=False
+                run=False,
+                cuda=False
             ))
 
         logger.info("Pressurising ...")
@@ -439,7 +443,8 @@ def equilibrate_systems(
                 tempi=4.0,
                 ofreq=1,
                 fname="debug.in",
-                run=True
+                run=True,
+                cuda=False
             )
 
             em(
@@ -484,7 +489,8 @@ def equilibrate_systems(
                 tempi=4.0,
                 ofreq=1,
                 fname="pre_heat.in",
-                run=True
+                run=True,
+                cuda=False
             )
 
             logger.info("Second Emergy minimizing ...")
@@ -554,7 +560,8 @@ def equilibrate_systems(
                 aces_setting=config.get("aces_setting", None),
                 ofreq=10,
                 fname="pre_press.in",
-                run=True
+                run=True,
+                cuda=False
             )
 
             logger.info("Pre-Pressurising2 ...")
@@ -579,7 +586,8 @@ def equilibrate_systems(
                 aces_setting=config.get("aces_setting", None),
                 ofreq=10,
                 fname="pre_press2.in",
-                run=True
+                run=True,
+                cuda=False
             )
 
             logger.info("Pressurising ...")
