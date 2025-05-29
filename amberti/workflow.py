@@ -561,7 +561,7 @@ def equilibrate_systems(
                 ofreq=10,
                 fname="pre_press.in",
                 run=True,
-                cuda=False
+                cuda=True
             )
 
             logger.info("Pre-Pressurising2 ...")
@@ -587,7 +587,7 @@ def equilibrate_systems(
                 ofreq=10,
                 fname="pre_press2.in",
                 run=True,
-                cuda=False
+                cuda=True
             )
 
             logger.info("Pressurising ...")
